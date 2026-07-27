@@ -1,4 +1,4 @@
-# Mazu Banking API
+# Lekha
 
 REST API for the Banking Money Transfer schema (`users`, `company`, `accounts`, `transfers`),
 built with Go + Gin + PostgreSQL.
