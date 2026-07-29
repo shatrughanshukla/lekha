@@ -6,8 +6,8 @@ import (
 
 	"github.com/gin-gonic/gin"
 
-	"mazu-banking-api/config"
-	"mazu-banking-api/models"
+	"lekha-api/config"
+	"lekha-api/models"
 )
 
 // CreateTransfer handles POST /transfers

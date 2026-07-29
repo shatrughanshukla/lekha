@@ -7,8 +7,8 @@ import (
 	"github.com/gin-gonic/gin"
 	"github.com/joho/godotenv"
 
-	"mazu-banking-api/config"
-	"mazu-banking-api/routes"
+	"lekha-api/config"
+	"lekha-api/routes"
 )
 
 func main() {

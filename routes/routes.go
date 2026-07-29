@@ -3,23 +3,36 @@ package routes
 import (
 	"github.com/gin-gonic/gin"
 
-	"mazu-banking-api/handlers"
+	"lekha-api/handlers"
+	"lekha-api/middleware"
 )
 
-// RegisterRoutes wires every entity's CRUD endpoints onto the Gin engine.
+// RegisterRoutes wires every route onto the Gin engine.
+//
+// /auth/signup and /auth/signin are public — that's how a user gets a token
+// in the first place. Everything else requires a valid Bearer token.
 func RegisterRoutes(r *gin.Engine) {
 	api := r.Group("/api/v1")
 
-	users := api.Group("/users")
+	auth := api.Group("/auth")
 	{
-		users.POST("", handlers.CreateUser)
+		auth.POST("/signup", handlers.SignUp)
+		auth.POST("/signin", handlers.SignIn)
+	}
+
+	// Everything below this line requires Authorization: Bearer <token>
+	protected := api.Group("")
+	protected.Use(middleware.AuthRequired())
+
+	users := protected.Group("/users")
+	{
 		users.GET("", handlers.GetUsers)
 		users.GET("/:id", handlers.GetUserByID)
 		users.PUT("/:id", handlers.UpdateUser)
 		users.DELETE("/:id", handlers.DeleteUser)
 	}
 
-	companies := api.Group("/companies")
+	companies := protected.Group("/companies")
 	{
 		companies.POST("", handlers.CreateCompany)
 		companies.GET("", handlers.GetCompanies)
@@ -28,7 +41,7 @@ func RegisterRoutes(r *gin.Engine) {
 		companies.DELETE("/:id", handlers.DeleteCompany)
 	}
 
-	accounts := api.Group("/accounts")
+	accounts := protected.Group("/accounts")
 	{
 		accounts.POST("", handlers.CreateAccount)
 		accounts.GET("", handlers.GetAccounts) // supports ?company_id=
@@ -37,7 +50,7 @@ func RegisterRoutes(r *gin.Engine) {
 		accounts.DELETE("/:id", handlers.DeleteAccount)
 	}
 
-	transfers := api.Group("/transfers")
+	transfers := protected.Group("/transfers")
 	{
 		transfers.POST("", handlers.CreateTransfer)
 		transfers.GET("", handlers.GetTransfers) // supports ?company_id= ?account_id= ?status=

@@ -5,41 +5,16 @@ import (
 	"net/http"
 
 	"github.com/gin-gonic/gin"
-	"golang.org/x/crypto/bcrypt"
 
-	"mazu-banking-api/config"
-	"mazu-banking-api/models"
+	"lekha-api/config"
+	"lekha-api/models"
 )
 
-// CreateUser handles POST /users
-func CreateUser(c *gin.Context) {
-	var input models.CreateUserInput
-	if err := c.ShouldBindJSON(&input); err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
-		return
-	}
-
-	hashedPassword, err := bcrypt.GenerateFromPassword([]byte(input.Password), bcrypt.DefaultCost)
-	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to hash password"})
-		return
-	}
-
-	var user models.User
-	query := `
-		INSERT INTO users (name, email, password_hash)
-		VALUES ($1, $2, $3)
-		RETURNING id, name, email, created_at, updated_at`
-
-	err = config.DB.QueryRow(query, input.Name, input.Email, string(hashedPassword)).
-		Scan(&user.ID, &user.Name, &user.Email, &user.CreatedAt, &user.UpdatedAt)
-	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
-		return
-	}
-
-	c.JSON(http.StatusCreated, user)
-}
+// Note: there is no CreateUser handler here anymore — creating a user now
+// happens exclusively through POST /auth/signup (see auth_handler.go), which
+// does the same insert but also returns a JWT so a new user is logged in
+// immediately. Keeping a second, separate "create user" path around would
+// just be two ways to do the same thing.
 
 // GetUsers handles GET /users
 func GetUsers(c *gin.Context) {
