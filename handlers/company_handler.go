@@ -8,6 +8,7 @@ import (
 
 	"lekha-api/config"
 	"lekha-api/models"
+	"lekha-api/utils"
 )
 
 // CreateCompany handles POST /companies
@@ -27,7 +28,10 @@ func CreateCompany(c *gin.Context) {
 	err := config.DB.QueryRow(query, input.CompanyName, input.CreatedBy).
 		Scan(&comp.ID, &comp.CompanyName, &comp.CreatedAt, &comp.UpdatedAt, &comp.CreatedBy, &comp.UpdatedBy)
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		// Most commonly hit here: created_by is a well-formed UUID that
+		// doesn't match any real user — a foreign-key violation, now
+		// returned as a clean 400 instead of a raw 500.
+		utils.RespondDBError(c, err)
 		return
 	}
 
@@ -40,7 +44,7 @@ func GetCompanies(c *gin.Context) {
 		SELECT id, company_name, created_at, updated_at, created_by, updated_by
 		FROM company ORDER BY created_at DESC`)
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		utils.RespondDBError(c, err)
 		return
 	}
 	defer rows.Close()
@@ -49,7 +53,7 @@ func GetCompanies(c *gin.Context) {
 	for rows.Next() {
 		var comp models.Company
 		if err := rows.Scan(&comp.ID, &comp.CompanyName, &comp.CreatedAt, &comp.UpdatedAt, &comp.CreatedBy, &comp.UpdatedBy); err != nil {
-			c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+			utils.RespondDBError(c, err)
 			return
 		}
 		companies = append(companies, comp)
@@ -61,6 +65,10 @@ func GetCompanies(c *gin.Context) {
 // GetCompanyByID handles GET /companies/:id
 func GetCompanyByID(c *gin.Context) {
 	id := c.Param("id")
+	if !utils.IsValidUUID(id) {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "invalid id format, expected a UUID"})
+		return
+	}
 
 	var comp models.Company
 	query := `
@@ -74,7 +82,7 @@ func GetCompanyByID(c *gin.Context) {
 		return
 	}
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		utils.RespondDBError(c, err)
 		return
 	}
 
@@ -84,6 +92,10 @@ func GetCompanyByID(c *gin.Context) {
 // UpdateCompany handles PUT /companies/:id
 func UpdateCompany(c *gin.Context) {
 	id := c.Param("id")
+	if !utils.IsValidUUID(id) {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "invalid id format, expected a UUID"})
+		return
+	}
 
 	var input models.UpdateCompanyInput
 	if err := c.ShouldBindJSON(&input); err != nil {
@@ -106,7 +118,7 @@ func UpdateCompany(c *gin.Context) {
 		return
 	}
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		utils.RespondDBError(c, err)
 		return
 	}
 
@@ -116,10 +128,17 @@ func UpdateCompany(c *gin.Context) {
 // DeleteCompany handles DELETE /companies/:id
 func DeleteCompany(c *gin.Context) {
 	id := c.Param("id")
+	if !utils.IsValidUUID(id) {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "invalid id format, expected a UUID"})
+		return
+	}
 
 	result, err := config.DB.Exec(`DELETE FROM company WHERE id = $1`, id)
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		// Most commonly hit here: the company still has accounts (or
+		// transfers) referencing it — a foreign-key violation, now
+		// returned as a clean 400 instead of a raw 500.
+		utils.RespondDBError(c, err)
 		return
 	}
 

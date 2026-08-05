@@ -8,6 +8,7 @@ import (
 
 	"lekha-api/config"
 	"lekha-api/models"
+	"lekha-api/utils"
 )
 
 // CreateAccount handles POST /accounts
@@ -28,7 +29,10 @@ func CreateAccount(c *gin.Context) {
 		Scan(&acc.ID, &acc.CompanyID, &acc.AccountType, &acc.CurrentBalance, &acc.IsActive,
 			&acc.CreatedAt, &acc.UpdatedAt, &acc.CreatedBy, &acc.UpdatedBy)
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		// Most commonly hit here: company_id or created_by is a well-formed
+		// UUID that doesn't match any real row — a foreign-key violation,
+		// now returned as a clean 400 instead of a raw 500.
+		utils.RespondDBError(c, err)
 		return
 	}
 
@@ -39,6 +43,11 @@ func CreateAccount(c *gin.Context) {
 // Supports an optional ?company_id= query param to filter accounts for one company.
 func GetAccounts(c *gin.Context) {
 	companyID := c.Query("company_id")
+
+	if companyID != "" && !utils.IsValidUUID(companyID) {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "invalid company_id format, expected a UUID"})
+		return
+	}
 
 	var rows *sql.Rows
 	var err error
@@ -53,7 +62,7 @@ func GetAccounts(c *gin.Context) {
 			FROM accounts ORDER BY created_at DESC`)
 	}
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		utils.RespondDBError(c, err)
 		return
 	}
 	defer rows.Close()
@@ -63,7 +72,7 @@ func GetAccounts(c *gin.Context) {
 		var acc models.Account
 		if err := rows.Scan(&acc.ID, &acc.CompanyID, &acc.AccountType, &acc.CurrentBalance, &acc.IsActive,
 			&acc.CreatedAt, &acc.UpdatedAt, &acc.CreatedBy, &acc.UpdatedBy); err != nil {
-			c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+			utils.RespondDBError(c, err)
 			return
 		}
 		accounts = append(accounts, acc)
@@ -75,6 +84,10 @@ func GetAccounts(c *gin.Context) {
 // GetAccountByID handles GET /accounts/:id
 func GetAccountByID(c *gin.Context) {
 	id := c.Param("id")
+	if !utils.IsValidUUID(id) {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "invalid id format, expected a UUID"})
+		return
+	}
 
 	var acc models.Account
 	query := `
@@ -89,7 +102,7 @@ func GetAccountByID(c *gin.Context) {
 		return
 	}
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		utils.RespondDBError(c, err)
 		return
 	}
 
@@ -101,6 +114,10 @@ func GetAccountByID(c *gin.Context) {
 // changes must go through the transfers API so the ledger stays consistent.
 func UpdateAccount(c *gin.Context) {
 	id := c.Param("id")
+	if !utils.IsValidUUID(id) {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "invalid id format, expected a UUID"})
+		return
+	}
 
 	var input models.UpdateAccountInput
 	if err := c.ShouldBindJSON(&input); err != nil {
@@ -126,7 +143,7 @@ func UpdateAccount(c *gin.Context) {
 		return
 	}
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		utils.RespondDBError(c, err)
 		return
 	}
 
@@ -136,10 +153,17 @@ func UpdateAccount(c *gin.Context) {
 // DeleteAccount handles DELETE /accounts/:id
 func DeleteAccount(c *gin.Context) {
 	id := c.Param("id")
+	if !utils.IsValidUUID(id) {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "invalid id format, expected a UUID"})
+		return
+	}
 
 	result, err := config.DB.Exec(`DELETE FROM accounts WHERE id = $1`, id)
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		// Most commonly hit here: the account still has transfers
+		// referencing it — a foreign-key violation, now returned as a
+		// clean 400 instead of a raw 500.
+		utils.RespondDBError(c, err)
 		return
 	}
 

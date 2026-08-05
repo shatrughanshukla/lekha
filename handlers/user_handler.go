@@ -8,6 +8,7 @@ import (
 
 	"lekha-api/config"
 	"lekha-api/models"
+	"lekha-api/utils"
 )
 
 // Note: there is no CreateUser handler here anymore — creating a user now
@@ -20,7 +21,7 @@ import (
 func GetUsers(c *gin.Context) {
 	rows, err := config.DB.Query(`SELECT id, name, email, created_at, updated_at FROM users ORDER BY created_at DESC`)
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		utils.RespondDBError(c, err)
 		return
 	}
 	defer rows.Close()
@@ -29,7 +30,7 @@ func GetUsers(c *gin.Context) {
 	for rows.Next() {
 		var u models.User
 		if err := rows.Scan(&u.ID, &u.Name, &u.Email, &u.CreatedAt, &u.UpdatedAt); err != nil {
-			c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+			utils.RespondDBError(c, err)
 			return
 		}
 		users = append(users, u)
@@ -41,6 +42,10 @@ func GetUsers(c *gin.Context) {
 // GetUserByID handles GET /users/:id
 func GetUserByID(c *gin.Context) {
 	id := c.Param("id")
+	if !utils.IsValidUUID(id) {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "invalid id format, expected a UUID"})
+		return
+	}
 
 	var u models.User
 	query := `SELECT id, name, email, created_at, updated_at FROM users WHERE id = $1`
@@ -51,7 +56,7 @@ func GetUserByID(c *gin.Context) {
 		return
 	}
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		utils.RespondDBError(c, err)
 		return
 	}
 
@@ -62,6 +67,10 @@ func GetUserByID(c *gin.Context) {
 // Only name and/or email are updated — whichever fields are present in the payload.
 func UpdateUser(c *gin.Context) {
 	id := c.Param("id")
+	if !utils.IsValidUUID(id) {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "invalid id format, expected a UUID"})
+		return
+	}
 
 	var input models.UpdateUserInput
 	if err := c.ShouldBindJSON(&input); err != nil {
@@ -85,7 +94,7 @@ func UpdateUser(c *gin.Context) {
 		return
 	}
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		utils.RespondDBError(c, err)
 		return
 	}
 
@@ -95,10 +104,14 @@ func UpdateUser(c *gin.Context) {
 // DeleteUser handles DELETE /users/:id
 func DeleteUser(c *gin.Context) {
 	id := c.Param("id")
+	if !utils.IsValidUUID(id) {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "invalid id format, expected a UUID"})
+		return
+	}
 
 	result, err := config.DB.Exec(`DELETE FROM users WHERE id = $1`, id)
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		utils.RespondDBError(c, err)
 		return
 	}
 

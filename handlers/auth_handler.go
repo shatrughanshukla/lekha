@@ -37,8 +37,10 @@ func SignUp(c *gin.Context) {
 	err = config.DB.QueryRow(query, input.Name, input.Email, string(hashedPassword)).
 		Scan(&user.ID, &user.Name, &user.Email, &user.CreatedAt, &user.UpdatedAt)
 	if err != nil {
-		// A unique-constraint violation on email is the most likely cause here.
-		c.JSON(http.StatusConflict, gin.H{"error": "could not create user — email may already be registered"})
+		// utils.RespondDBError correctly returns 409 for a genuine unique
+		// constraint violation on email, and a real 500 for anything else —
+		// rather than blanket-labeling every possible failure as a conflict.
+		utils.RespondDBError(c, err)
 		return
 	}
 
@@ -71,7 +73,7 @@ func SignIn(c *gin.Context) {
 		return
 	}
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		utils.RespondDBError(c, err)
 		return
 	}
 

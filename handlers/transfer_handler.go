@@ -8,6 +8,7 @@ import (
 
 	"lekha-api/config"
 	"lekha-api/models"
+	"lekha-api/utils"
 )
 
 // CreateTransfer handles POST /transfers
@@ -26,7 +27,7 @@ func CreateTransfer(c *gin.Context) {
 
 	tx, err := config.DB.Begin()
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		utils.RespondDBError(c, err)
 		return
 	}
 	defer tx.Rollback() // no-op once tx.Commit() succeeds
@@ -44,7 +45,7 @@ func CreateTransfer(c *gin.Context) {
 		return
 	}
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		utils.RespondDBError(c, err)
 		return
 	}
 	if !fromActive {
@@ -67,7 +68,7 @@ func CreateTransfer(c *gin.Context) {
 		return
 	}
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		utils.RespondDBError(c, err)
 		return
 	}
 	if !toActive {
@@ -80,14 +81,14 @@ func CreateTransfer(c *gin.Context) {
 		`UPDATE accounts SET current_balance = current_balance - $1 WHERE id = $2`,
 		input.Amount, input.FromAccountID,
 	); err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		utils.RespondDBError(c, err)
 		return
 	}
 	if _, err = tx.Exec(
 		`UPDATE accounts SET current_balance = current_balance + $1 WHERE id = $2`,
 		input.Amount, input.ToAccountID,
 	); err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		utils.RespondDBError(c, err)
 		return
 	}
 
@@ -112,12 +113,15 @@ func CreateTransfer(c *gin.Context) {
 		&transfer.TransferNotes, &transfer.CreatedByUser, &transfer.UpdatedByUser,
 		&transfer.CreatedAt, &transfer.UpdatedAt)
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		// Most commonly hit here: company_id is a well-formed UUID that
+		// doesn't match any real company — a foreign-key violation, now
+		// returned as a clean 400 instead of a raw 500.
+		utils.RespondDBError(c, err)
 		return
 	}
 
 	if err := tx.Commit(); err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		utils.RespondDBError(c, err)
 		return
 	}
 
@@ -131,18 +135,31 @@ func GetTransfers(c *gin.Context) {
 	accountID := c.Query("account_id")
 	status := c.Query("status")
 
+	if companyID != "" && !utils.IsValidUUID(companyID) {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "invalid company_id format, expected a UUID"})
+		return
+	}
+	if accountID != "" && !utils.IsValidUUID(accountID) {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "invalid account_id format, expected a UUID"})
+		return
+	}
+	if status != "" && !utils.IsValidTransferStatus(status) {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "invalid status value"})
+		return
+	}
+
 	query := `
 		SELECT id, company_id, transfer_type, transaction_date, from_account_id, to_account_id,
 		       amount, status, transfer_notes, created_by_user, updated_by_user, created_at, updated_at
 		FROM transfers
 		WHERE ($1 = '' OR company_id = $1::uuid)
 		  AND ($2 = '' OR from_account_id = $2::uuid OR to_account_id = $2::uuid)
-		  AND ($3 = '' OR status = $3)
-		ORDER BY created_at DESC`
+		  AND ($3 = '' OR status = $3::transfer_status_enum)
+		ORDER BY created_at DESC` // // before here was WHERE (status = '' OR status = $3) which was giving error 500
 
 	rows, err := config.DB.Query(query, companyID, accountID, status)
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		utils.RespondDBError(c, err)
 		return
 	}
 	defer rows.Close()
@@ -153,7 +170,7 @@ func GetTransfers(c *gin.Context) {
 		if err := rows.Scan(&t.ID, &t.CompanyID, &t.TransferType, &t.TransactionDate,
 			&t.FromAccountID, &t.ToAccountID, &t.Amount, &t.Status, &t.TransferNotes,
 			&t.CreatedByUser, &t.UpdatedByUser, &t.CreatedAt, &t.UpdatedAt); err != nil {
-			c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+			utils.RespondDBError(c, err)
 			return
 		}
 		transfers = append(transfers, t)
@@ -165,6 +182,10 @@ func GetTransfers(c *gin.Context) {
 // GetTransferByID handles GET /transfers/:id
 func GetTransferByID(c *gin.Context) {
 	id := c.Param("id")
+	if !utils.IsValidUUID(id) {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "invalid id format, expected a UUID"})
+		return
+	}
 
 	var t models.Transfer
 	query := `
@@ -181,7 +202,7 @@ func GetTransferByID(c *gin.Context) {
 		return
 	}
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		utils.RespondDBError(c, err)
 		return
 	}
 
@@ -195,6 +216,10 @@ func GetTransferByID(c *gin.Context) {
 // the same transactional pattern as CreateTransfer above.
 func UpdateTransferStatus(c *gin.Context) {
 	id := c.Param("id")
+	if !utils.IsValidUUID(id) {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "invalid id format, expected a UUID"})
+		return
+	}
 
 	var input models.UpdateTransferStatusInput
 	if err := c.ShouldBindJSON(&input); err != nil {
@@ -220,7 +245,7 @@ func UpdateTransferStatus(c *gin.Context) {
 		return
 	}
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		utils.RespondDBError(c, err)
 		return
 	}
 
