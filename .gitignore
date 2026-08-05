@@ -1,2 +1,4 @@
 .env
 *.exe
+AdditionalResources/ER_Diagram.html
+AdditionalResources/Lekha_API_Full_Test_Suite.postman_collection_2.json
