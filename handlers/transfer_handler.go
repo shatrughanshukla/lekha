@@ -155,7 +155,7 @@ func GetTransfers(c *gin.Context) {
 		WHERE ($1 = '' OR company_id = $1::uuid)
 		  AND ($2 = '' OR from_account_id = $2::uuid OR to_account_id = $2::uuid)
 		  AND ($3 = '' OR status = $3::transfer_status_enum)
-		ORDER BY created_at DESC` // // before here was WHERE (status = '' OR status = $3) which was giving error 500
+		ORDER BY created_at DESC`
 
 	rows, err := config.DB.Query(query, companyID, accountID, status)
 	if err != nil {

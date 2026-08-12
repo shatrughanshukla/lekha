@@ -39,6 +39,8 @@ func RegisterRoutes(r *gin.Engine) {
 		companies.GET("/:id", handlers.GetCompanyByID)
 		companies.PUT("/:id", handlers.UpdateCompany)
 		companies.DELETE("/:id", handlers.DeleteCompany)
+		companies.GET("/:id/transfers/summary", handlers.GetCompanyTransferSummary) // pure Go/SQL, no AI
+		companies.GET("/:id/insights", handlers.GetCompanyInsights)                 // AI-phrased version of the above
 	}
 
 	accounts := protected.Group("/accounts")
@@ -56,5 +58,6 @@ func RegisterRoutes(r *gin.Engine) {
 		transfers.GET("", handlers.GetTransfers) // supports ?company_id= ?account_id= ?status=
 		transfers.GET("/:id", handlers.GetTransferByID)
 		transfers.PATCH("/:id/status", handlers.UpdateTransferStatus)
+		transfers.POST("/search", handlers.SearchTransfers) // natural language search (AI layer)
 	}
 }
