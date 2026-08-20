@@ -33,6 +33,15 @@ export const IconBuilding = (p) => (
 export const IconPeople = (p) => (
   <svg {...iconProps} {...p}><circle cx="9" cy="8" r="3" /><path d="M3 20c0-3.3 2.7-6 6-6s6 2.7 6 6" /><circle cx="17" cy="7" r="2.5" /><path d="M15 13.2c2.6.4 4.5 2.6 5 6.8" /></svg>
 )
+export const IconInfo = (p) => (
+  <svg {...iconProps} {...p}><circle cx="12" cy="12" r="9" /><path d="M12 11v6M12 7.5h.01" /></svg>
+)
+export const IconCrown = (p) => (
+  <svg {...iconProps} {...p}><path d="M3 8l4 4 5-7 5 7 4-4-2 11H5L3 8z" /></svg>
+)
+export const IconClose = (p) => (
+  <svg {...iconProps} {...p}><path d="M6 6l12 12M18 6L6 18" /></svg>
+)
 
 // ---------------------------------------------------------------------------
 // Money / status
@@ -53,6 +62,24 @@ export function StampBadge({ status, color }) {
 export function ErrorNote({ message }) {
   if (!message) return null
   return <div className="error-note">{message}</div>
+}
+
+// ---------------------------------------------------------------------------
+// Modal — used by the transaction detail view.
+// ---------------------------------------------------------------------------
+
+export function Modal({ title, onClose, children }) {
+  return (
+    <div className="modal-backdrop" onClick={onClose}>
+      <div className="modal-card" onClick={(e) => e.stopPropagation()}>
+        <div className="modal-head">
+          <h3>{title}</h3>
+          <button className="modal-close" onClick={onClose}><IconClose /></button>
+        </div>
+        {children}
+      </div>
+    </div>
+  )
 }
 
 // ---------------------------------------------------------------------------

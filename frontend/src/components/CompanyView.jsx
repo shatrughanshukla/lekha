@@ -2,17 +2,21 @@ import { useState, useEffect, useMemo } from 'react'
 import { api, ACCOUNT_TYPES, TRANSFER_TYPES, STATUS_COLORS } from '../api.js'
 import {
   Money, StampBadge, ErrorNote, DeleteButton,
-  IconBank, IconCash, IconPlus, IconSparkle, IconSearch, IconArrowRight, IconPeople,
+  IconBank, IconCash, IconPlus, IconSparkle, IconSearch, IconArrowRight,
+  IconPeople, IconInfo, IconCrown,
 } from './Shared.jsx'
+import TransferDetail from './TransferDetail.jsx'
 
 export default function CompanyView({ token, user, company, onBack }) {
   const [accounts, setAccounts] = useState([])
+  const [myAccounts, setMyAccounts] = useState([]) // across ALL companies user belongs to
   const [transfers, setTransfers] = useState([])
   const [members, setMembers] = useState([])
   const [error, setError] = useState('')
 
   const [invitingMember, setInvitingMember] = useState(false)
   const [inviteEmail, setInviteEmail] = useState('')
+  const [detailTransferId, setDetailTransferId] = useState(null)
 
   const [addingAccount, setAddingAccount] = useState(false)
   const [accType, setAccType] = useState(ACCOUNT_TYPES[0])
@@ -33,14 +37,16 @@ export default function CompanyView({ token, user, company, onBack }) {
 
   async function refresh() {
     try {
-      const [a, t, m] = await Promise.all([
+      const [a, t, m, mine] = await Promise.all([
         api.listAccounts(token, company.id),
         api.listTransfers(token, company.id),
         api.listMembers(token, company.id),
+        api.listMyAccounts(token),
       ])
       setAccounts(a)
       setTransfers(t)
       setMembers(m)
+      setMyAccounts(mine)
     } catch (err) {
       setError(err.message)
     }
@@ -63,6 +69,29 @@ export default function CompanyView({ token, user, company, onBack }) {
       setError(err.message)
     }
   }
+
+  async function removeMember(userId) {
+    setError('')
+    try {
+      await api.removeMember(token, company.id, userId)
+      refresh()
+    } catch (err) {
+      setError(err.message)
+    }
+  }
+
+  async function toggleAdmin(userId, makeAdmin) {
+    setError('')
+    try {
+      await api.updateMemberRole(token, company.id, userId, makeAdmin)
+      refresh()
+    } catch (err) {
+      setError(err.message)
+    }
+  }
+
+  const myMembership = members.find((m) => m.user_id === user.id)
+  const iAmAdmin = myMembership?.is_admin || false
 
   const stats = useMemo(() => {
     const totalBalance = accounts.reduce((sum, a) => sum + Number(a.current_balance), 0)
@@ -103,7 +132,6 @@ export default function CompanyView({ token, user, company, onBack }) {
     setError('')
     try {
       await api.createTransfer(token, {
-        companyId: company.id,
         transferType: xferType,
         fromAccountId: fromAcc,
         toAccountId: toAcc,
@@ -111,6 +139,7 @@ export default function CompanyView({ token, user, company, onBack }) {
         notes,
         userId: user.id,
       })
+      setToAcc('')
       setAmount('')
       setNotes('')
       refresh()
@@ -145,7 +174,7 @@ export default function CompanyView({ token, user, company, onBack }) {
   }
 
   const shownTransfers = searchResults ? searchResults.results : transfers
-  const accountsById = useMemo(() => Object.fromEntries(accounts.map((a) => [a.id, a])), [accounts])
+  const accountsById = useMemo(() => Object.fromEntries(myAccounts.map((a) => [a.id, a])), [myAccounts])
 
   return (
     <div className="page">
@@ -182,7 +211,7 @@ export default function CompanyView({ token, user, company, onBack }) {
       <section className="panel">
         <div className="panel-head">
           <h2><IconPeople /> Members</h2>
-          {!invitingMember && (
+          {iAmAdmin && !invitingMember && (
             <button className="btn-ghost small" onClick={() => setInvitingMember(true)}>
               + Add member
             </button>
@@ -192,8 +221,20 @@ export default function CompanyView({ token, user, company, onBack }) {
         <div className="member-row">
           {members.map((m) => (
             <div key={m.user_id} className="member-chip">
+              {m.is_admin && <IconCrown width={13} height={13} />}
               <span className="member-name">{m.name}</span>
               <span className="member-email mono dim">{m.email}</span>
+              {iAmAdmin && (
+                <div className="member-actions">
+                  <button
+                    className="link-btn small"
+                    onClick={() => toggleAdmin(m.user_id, !m.is_admin)}
+                  >
+                    {m.is_admin ? 'demote' : 'make admin'}
+                  </button>
+                  <DeleteButton onConfirm={() => removeMember(m.user_id)} label="member" />
+                </div>
+              )}
             </div>
           ))}
         </div>
@@ -213,7 +254,9 @@ export default function CompanyView({ token, user, company, onBack }) {
           </form>
         )}
         <p className="panel-hint">
-          Only people added here can see this company. Adding someone gives them full access to its accounts and transfers.
+          {iAmAdmin
+            ? 'You\'re an admin — you can add, remove, and promote members. A company always needs at least one admin.'
+            : 'Only people added here can see this company. Ask an admin to add or remove members.'}
         </p>
       </section>
 
@@ -268,6 +311,14 @@ export default function CompanyView({ token, user, company, onBack }) {
               </div>
               <div className="account-chip-type">{a.account_type}</div>
               <div className="account-chip-balance"><Money value={a.current_balance} /></div>
+              <button
+                type="button"
+                className="account-chip-id mono"
+                title="Click to copy account ID"
+                onClick={() => navigator.clipboard.writeText(a.id)}
+              >
+                {a.id.slice(0, 8)}… ⧉
+              </button>
               <div className={a.is_active ? 'pill pill-active' : 'pill pill-inactive'}>
                 {a.is_active ? 'active' : 'inactive'}
               </div>
@@ -308,16 +359,35 @@ export default function CompanyView({ token, user, company, onBack }) {
           </select>
           <select value={fromAcc} onChange={(e) => setFromAcc(e.target.value)} required>
             <option value="">from…</option>
-            {accounts.map((a) => <option key={a.id} value={a.id}>{a.account_type} {a.id.slice(0, 6)}</option>)}
+            {accounts.map((a) => (
+              <option key={a.id} value={a.id}>
+                {a.account_type} {a.id.slice(0, 6)}
+              </option>
+            ))}
           </select>
-          <select value={toAcc} onChange={(e) => setToAcc(e.target.value)} required>
-            <option value="">to…</option>
-            {accounts.map((a) => <option key={a.id} value={a.id}>{a.account_type} {a.id.slice(0, 6)}</option>)}
-          </select>
+          <input
+            className="mono"
+            list="my-accounts-datalist"
+            placeholder="to: paste account ID…"
+            value={toAcc}
+            onChange={(e) => setToAcc(e.target.value)}
+            required
+          />
+          <datalist id="my-accounts-datalist">
+            {myAccounts.map((a) => (
+              <option key={a.id} value={a.id}>
+                {a.company_name} — {a.account_type}
+              </option>
+            ))}
+          </datalist>
           <input type="number" placeholder="Amount" value={amount} onChange={(e) => setAmount(e.target.value)} required />
           <input placeholder="Note (optional)" value={notes} onChange={(e) => setNotes(e.target.value)} />
           <button className="btn-primary small" type="submit">Send</button>
         </form>
+        <p className="panel-hint">
+          Sends from one of this company's own accounts. The destination can be ANY account — start typing
+          for suggestions from your own companies, or paste any account ID someone's shared with you.
+        </p>
 
         {shownTransfers.length === 0 ? (
           <div className="empty-state">No transfers to show.</div>
@@ -329,25 +399,61 @@ export default function CompanyView({ token, user, company, onBack }) {
               <span>Route</span>
               <span>Status</span>
               <span className="align-right">Amount</span>
+              <span></span>
             </div>
             {shownTransfers.map((t) => {
-              const from = accountsById[t.from_account_id]
-              const to = accountsById[t.to_account_id]
+              // Prefer the enriched fields the backend joins in; fall back to
+              // the local myAccounts lookup (needed for search results,
+              // which don't carry the enriched fields yet), then to a raw
+              // short ID if the account belongs to someone else entirely.
+              const fromLocal = accountsById[t.from_account_id]
+              const toLocal = accountsById[t.to_account_id]
+              const fromLabel = t.from_company_name
+                ? `${t.from_company_name} · ${t.from_account_type}`
+                : fromLocal
+                ? `${fromLocal.company_name} · ${fromLocal.account_type}`
+                : t.from_account_id.slice(0, 6)
+              const toLabel = t.to_company_name
+                ? `${t.to_company_name} · ${t.to_account_type}`
+                : toLocal
+                ? `${toLocal.company_name} · ${toLocal.account_type}`
+                : t.to_account_id.slice(0, 6)
+
               return (
-                <div key={t.id} className="ledger-table-row">
+                <div key={t.id} className="ledger-table-row clickable" onClick={() => setDetailTransferId(t.id)}>
                   <span className="mono dim">{new Date(t.transaction_date).toLocaleDateString(undefined, { month: 'short', day: 'numeric' })}</span>
-                  <span>{t.transfer_type}</span>
+                  <span>
+                    {t.transfer_type}
+                    {t.transfer_notes && <div className="note-preview">"{t.transfer_notes}"</div>}
+                  </span>
                   <span className="route mono dim">
-                    {from ? from.account_type : t.from_account_id.slice(0, 6)} <IconArrowRight width={13} height={13} /> {to ? to.account_type : t.to_account_id.slice(0, 6)}
+                    {fromLabel} <IconArrowRight width={13} height={13} /> {toLabel}
                   </span>
                   <StampBadge status={t.status} color={STATUS_COLORS[t.status]} />
                   <span className="align-right"><Money value={t.amount} /></span>
+                  <button
+                    className="info-btn"
+                    title="View details"
+                    onClick={(e) => { e.stopPropagation(); setDetailTransferId(t.id) }}
+                  >
+                    <IconInfo width={15} height={15} />
+                  </button>
                 </div>
               )
             })}
           </div>
         )}
       </section>
+
+      {detailTransferId && (
+        <TransferDetail
+          token={token}
+          user={user}
+          transferId={detailTransferId}
+          onClose={() => setDetailTransferId(null)}
+          onChanged={refresh}
+        />
+      )}
     </div>
   )
 }

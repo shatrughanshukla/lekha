@@ -42,7 +42,7 @@ func CreateCompany(c *gin.Context) {
 	}
 
 	if _, err = tx.Exec(
-		`INSERT INTO company_members (company_id, user_id) VALUES ($1, $2)`,
+		`INSERT INTO company_members (company_id, user_id, is_admin) VALUES ($1, $2, TRUE)`,
 		comp.ID, input.CreatedBy,
 	); err != nil {
 		utils.RespondDBError(c, err)
@@ -233,11 +233,11 @@ func ListCompanyMembers(c *gin.Context) {
 	}
 
 	rows, err := config.DB.Query(`
-		SELECT u.id, u.name, u.email, cm.created_at
+		SELECT u.id, u.name, u.email, cm.is_admin, cm.created_at
 		FROM company_members cm
 		JOIN users u ON u.id = cm.user_id
 		WHERE cm.company_id = $1
-		ORDER BY cm.created_at ASC`, id)
+		ORDER BY cm.is_admin DESC, cm.created_at ASC`, id)
 	if err != nil {
 		utils.RespondDBError(c, err)
 		return
@@ -247,7 +247,7 @@ func ListCompanyMembers(c *gin.Context) {
 	members := []models.CompanyMember{}
 	for rows.Next() {
 		var m models.CompanyMember
-		if err := rows.Scan(&m.UserID, &m.Name, &m.Email, &m.CreatedAt); err != nil {
+		if err := rows.Scan(&m.UserID, &m.Name, &m.Email, &m.IsAdmin, &m.CreatedAt); err != nil {
 			utils.RespondDBError(c, err)
 			return
 		}
@@ -258,8 +258,9 @@ func ListCompanyMembers(c *gin.Context) {
 }
 
 // AddCompanyMember handles POST /companies/:id/members
-// Adds another user (by email) to a company. Only existing members can add
-// someone else — you can't add yourself to a company you don't belong to.
+// Adds another user (by email) to a company as a plain (non-admin) member.
+// Only an ADMIN of the company can do this — being a plain member isn't
+// enough to bring someone else in.
 func AddCompanyMember(c *gin.Context) {
 	id := c.Param("id")
 	if !utils.IsValidUUID(id) {
@@ -268,13 +269,13 @@ func AddCompanyMember(c *gin.Context) {
 	}
 
 	userID := c.GetString("user_id")
-	isMember, err := utils.IsCompanyMember(id, userID)
+	isAdmin, err := utils.IsCompanyAdmin(id, userID)
 	if err != nil {
 		utils.RespondDBError(c, err)
 		return
 	}
-	if !isMember {
-		c.JSON(http.StatusNotFound, gin.H{"error": "company not found"})
+	if !isAdmin {
+		c.JSON(http.StatusForbidden, gin.H{"error": "only an admin of this company can add members"})
 		return
 	}
 
@@ -296,7 +297,7 @@ func AddCompanyMember(c *gin.Context) {
 	}
 
 	_, err = config.DB.Exec(
-		`INSERT INTO company_members (company_id, user_id) VALUES ($1, $2)`,
+		`INSERT INTO company_members (company_id, user_id, is_admin) VALUES ($1, $2, FALSE)`,
 		id, newUserID,
 	)
 	if err != nil {
@@ -307,4 +308,137 @@ func AddCompanyMember(c *gin.Context) {
 	}
 
 	c.JSON(http.StatusCreated, gin.H{"message": "member added"})
+}
+
+// RemoveCompanyMember handles DELETE /companies/:id/members/:user_id
+// Only an admin can remove anyone. An admin CANNOT be removed while they're
+// the company's last admin — that would leave the company with no one able
+// to manage it at all.
+func RemoveCompanyMember(c *gin.Context) {
+	id := c.Param("id")
+	targetUserID := c.Param("user_id")
+	if !utils.IsValidUUID(id) || !utils.IsValidUUID(targetUserID) {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "invalid id format, expected a UUID"})
+		return
+	}
+
+	requesterID := c.GetString("user_id")
+	isAdmin, err := utils.IsCompanyAdmin(id, requesterID)
+	if err != nil {
+		utils.RespondDBError(c, err)
+		return
+	}
+	if !isAdmin {
+		c.JSON(http.StatusForbidden, gin.H{"error": "only an admin of this company can remove members"})
+		return
+	}
+
+	var targetIsAdmin bool
+	err = config.DB.QueryRow(
+		`SELECT is_admin FROM company_members WHERE company_id = $1 AND user_id = $2`,
+		id, targetUserID,
+	).Scan(&targetIsAdmin)
+	if err == sql.ErrNoRows {
+		c.JSON(http.StatusNotFound, gin.H{"error": "that user is not a member of this company"})
+		return
+	}
+	if err != nil {
+		utils.RespondDBError(c, err)
+		return
+	}
+
+	if targetIsAdmin {
+		adminCount, err := utils.AdminCount(id)
+		if err != nil {
+			utils.RespondDBError(c, err)
+			return
+		}
+		if adminCount <= 1 {
+			c.JSON(http.StatusBadRequest, gin.H{"error": "cannot remove the last admin — promote someone else first"})
+			return
+		}
+	}
+
+	if _, err = config.DB.Exec(
+		`DELETE FROM company_members WHERE company_id = $1 AND user_id = $2`,
+		id, targetUserID,
+	); err != nil {
+		utils.RespondDBError(c, err)
+		return
+	}
+
+	c.JSON(http.StatusOK, gin.H{"message": "member removed"})
+}
+
+// UpdateCompanyMemberRole handles PATCH /companies/:id/members/:user_id
+// Promotes or demotes a member. Only an admin can call this, and the last
+// remaining admin cannot be demoted — same protection as RemoveCompanyMember.
+func UpdateCompanyMemberRole(c *gin.Context) {
+	id := c.Param("id")
+	targetUserID := c.Param("user_id")
+	if !utils.IsValidUUID(id) || !utils.IsValidUUID(targetUserID) {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "invalid id format, expected a UUID"})
+		return
+	}
+
+	requesterID := c.GetString("user_id")
+	isAdmin, err := utils.IsCompanyAdmin(id, requesterID)
+	if err != nil {
+		utils.RespondDBError(c, err)
+		return
+	}
+	if !isAdmin {
+		c.JSON(http.StatusForbidden, gin.H{"error": "only an admin of this company can change member roles"})
+		return
+	}
+
+	var input models.UpdateMemberRoleInput
+	if err := c.ShouldBindJSON(&input); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		return
+	}
+
+	if !input.IsAdmin {
+		// Demoting — check this isn't the last admin first.
+		var targetIsAdmin bool
+		err = config.DB.QueryRow(
+			`SELECT is_admin FROM company_members WHERE company_id = $1 AND user_id = $2`,
+			id, targetUserID,
+		).Scan(&targetIsAdmin)
+		if err == sql.ErrNoRows {
+			c.JSON(http.StatusNotFound, gin.H{"error": "that user is not a member of this company"})
+			return
+		}
+		if err != nil {
+			utils.RespondDBError(c, err)
+			return
+		}
+		if targetIsAdmin {
+			adminCount, err := utils.AdminCount(id)
+			if err != nil {
+				utils.RespondDBError(c, err)
+				return
+			}
+			if adminCount <= 1 {
+				c.JSON(http.StatusBadRequest, gin.H{"error": "cannot demote the last admin — promote someone else first"})
+				return
+			}
+		}
+	}
+
+	result, err := config.DB.Exec(
+		`UPDATE company_members SET is_admin = $1 WHERE company_id = $2 AND user_id = $3`,
+		input.IsAdmin, id, targetUserID,
+	)
+	if err != nil {
+		utils.RespondDBError(c, err)
+		return
+	}
+	rowsAffected, _ := result.RowsAffected()
+	if rowsAffected == 0 {
+		c.JSON(http.StatusNotFound, gin.H{"error": "that user is not a member of this company"})
+		return
+	}
+
+	c.JSON(http.StatusOK, gin.H{"message": "member role updated"})
 }

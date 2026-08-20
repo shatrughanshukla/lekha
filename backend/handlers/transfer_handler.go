@@ -19,24 +19,25 @@ import (
 // transaction with row locks to prevent two concurrent transfers from
 // reading a stale balance for the same account.
 //
-// It also requires the requester to be a member of the target company —
-// otherwise anyone with a valid token could move money between any two
-// account IDs they could guess, regardless of who they belong to.
+// Authorization model — this is the important part:
+//
+//	The transfer's company (whose books it's recorded under) is derived
+//	from from_account_id's REAL owning company, looked up server-side —
+//	never trusted from client input. The requester must be a member of
+//	THAT company, because that's the account they're authorizing money to
+//	leave from. to_account_id has NO membership requirement at all: you
+//	can send money to any account that exists, in any company, exactly
+//	like sending a real bank transfer to someone else's account without
+//	needing access to their bank statement. This also means a user who
+//	belongs to several companies can freely move money between accounts
+//	in different companies they own — the old version of this handler
+//	incorrectly required a client-supplied company_id and only checked
+//	membership on that, which never actually verified from_account
+//	belonged to a company the requester controlled at all.
 func CreateTransfer(c *gin.Context) {
 	var input models.CreateTransferInput
 	if err := c.ShouldBindJSON(&input); err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
-		return
-	}
-
-	userID := c.GetString("user_id")
-	isMember, err := utils.IsCompanyMember(input.CompanyID, userID)
-	if err != nil {
-		utils.RespondDBError(c, err)
-		return
-	}
-	if !isMember {
-		c.JSON(http.StatusNotFound, gin.H{"error": "company not found"})
 		return
 	}
 
@@ -47,14 +48,16 @@ func CreateTransfer(c *gin.Context) {
 	}
 	defer tx.Rollback() // no-op once tx.Commit() succeeds
 
-	// Lock the source account row so no other transfer can read/modify its
-	// balance until this transaction commits or rolls back.
+	// Lock the source account row and read its real owning company in the
+	// same query, so no other transfer can read/modify its balance until
+	// this transaction commits or rolls back.
 	var fromBalance float64
 	var fromActive bool
+	var fromCompanyID string
 	err = tx.QueryRow(
-		`SELECT current_balance, is_active FROM accounts WHERE id = $1 FOR UPDATE`,
+		`SELECT current_balance, is_active, company_id FROM accounts WHERE id = $1 FOR UPDATE`,
 		input.FromAccountID,
-	).Scan(&fromBalance, &fromActive)
+	).Scan(&fromBalance, &fromActive, &fromCompanyID)
 	if err == sql.ErrNoRows {
 		c.JSON(http.StatusNotFound, gin.H{"error": "from_account not found"})
 		return
@@ -63,6 +66,22 @@ func CreateTransfer(c *gin.Context) {
 		utils.RespondDBError(c, err)
 		return
 	}
+
+	// The requester must control the source account — i.e. be a member of
+	// the company it actually belongs to. Returns the same "not found"
+	// message as a missing account so an outsider can't tell the
+	// difference between "doesn't exist" and "exists but isn't yours".
+	userID := c.GetString("user_id")
+	isMember, err := utils.IsCompanyMember(fromCompanyID, userID)
+	if err != nil {
+		utils.RespondDBError(c, err)
+		return
+	}
+	if !isMember {
+		c.JSON(http.StatusNotFound, gin.H{"error": "from_account not found"})
+		return
+	}
+
 	if !fromActive {
 		c.JSON(http.StatusBadRequest, gin.H{"error": "from_account is not active"})
 		return
@@ -72,7 +91,9 @@ func CreateTransfer(c *gin.Context) {
 		return
 	}
 
-	// Confirm the destination account exists and is active too.
+	// Confirm the destination account exists and is active. Deliberately NO
+	// membership check here — the destination can belong to any company,
+	// same as sending money to someone else's real bank account.
 	var toActive bool
 	err = tx.QueryRow(
 		`SELECT is_active FROM accounts WHERE id = $1 FOR UPDATE`,
@@ -107,9 +128,9 @@ func CreateTransfer(c *gin.Context) {
 		return
 	}
 
-	// Record the transfer itself, marked COMPLETED since the balances above
-	// already moved. Swap to 'PENDING' here if your flow needs an approval
-	// step before money actually moves.
+	// Record the transfer under the SOURCE account's real company —
+	// derived above, never the client's word for it. Marked COMPLETED
+	// since the balances above already moved.
 	var transfer models.Transfer
 	insertQuery := `
 		INSERT INTO transfers (
@@ -121,7 +142,7 @@ func CreateTransfer(c *gin.Context) {
 		          amount, status, transfer_notes, created_by_user, updated_by_user, created_at, updated_at`
 
 	err = tx.QueryRow(insertQuery,
-		input.CompanyID, input.TransferType, input.FromAccountID, input.ToAccountID,
+		fromCompanyID, input.TransferType, input.FromAccountID, input.ToAccountID,
 		input.Amount, input.TransferNotes, input.CreatedByUser,
 	).Scan(&transfer.ID, &transfer.CompanyID, &transfer.TransferType, &transfer.TransactionDate,
 		&transfer.FromAccountID, &transfer.ToAccountID, &transfer.Amount, &transfer.Status,
@@ -141,9 +162,15 @@ func CreateTransfer(c *gin.Context) {
 }
 
 // GetTransfers handles GET /transfers
-// company_id is now REQUIRED (previously optional) — without it there was
-// no way to scope results to companies the requester actually belongs to.
-// account_id and status remain optional additional filters.
+// company_id is required — without it there'd be no way to scope results
+// to companies the requester actually belongs to. account_id and status
+// remain optional additional filters.
+//
+// Matches a transfer if the queried company is EITHER the sender's or the
+// receiver's — this is what makes a cross-company/external transfer show
+// up in both companies' transfer histories, not just the sender's. It also
+// joins in company names, account types, and creator/updater names so the
+// UI can show "from which company/account to which" without extra calls.
 func GetTransfers(c *gin.Context) {
 	companyID := c.Query("company_id")
 	accountID := c.Query("account_id")
@@ -178,13 +205,20 @@ func GetTransfers(c *gin.Context) {
 	}
 
 	query := `
-		SELECT id, company_id, transfer_type, transaction_date, from_account_id, to_account_id,
-		       amount, status, transfer_notes, created_by_user, updated_by_user, created_at, updated_at
-		FROM transfers
-		WHERE company_id = $1::uuid
-		  AND ($2 = '' OR from_account_id = $2::uuid OR to_account_id = $2::uuid)
-		  AND ($3 = '' OR status = $3::transfer_status_enum)
-		ORDER BY created_at DESC`
+		SELECT t.id, t.company_id, t.transfer_type, t.transaction_date, t.from_account_id, t.to_account_id,
+		       t.amount, t.status, t.transfer_notes, t.created_by_user, t.updated_by_user, t.created_at, t.updated_at,
+		       fc.company_name, tc.company_name, fa.account_type, ta.account_type, cu.name, uu.name
+		FROM transfers t
+		JOIN accounts fa ON fa.id = t.from_account_id
+		JOIN company fc ON fc.id = fa.company_id
+		JOIN accounts ta ON ta.id = t.to_account_id
+		JOIN company tc ON tc.id = ta.company_id
+		JOIN users cu ON cu.id = t.created_by_user
+		JOIN users uu ON uu.id = t.updated_by_user
+		WHERE (fa.company_id = $1::uuid OR ta.company_id = $1::uuid)
+		  AND ($2 = '' OR t.from_account_id = $2::uuid OR t.to_account_id = $2::uuid)
+		  AND ($3 = '' OR t.status = $3::transfer_status_enum)
+		ORDER BY t.created_at DESC`
 
 	rows, err := config.DB.Query(query, companyID, accountID, status)
 	if err != nil {
@@ -198,7 +232,9 @@ func GetTransfers(c *gin.Context) {
 		var t models.Transfer
 		if err := rows.Scan(&t.ID, &t.CompanyID, &t.TransferType, &t.TransactionDate,
 			&t.FromAccountID, &t.ToAccountID, &t.Amount, &t.Status, &t.TransferNotes,
-			&t.CreatedByUser, &t.UpdatedByUser, &t.CreatedAt, &t.UpdatedAt); err != nil {
+			&t.CreatedByUser, &t.UpdatedByUser, &t.CreatedAt, &t.UpdatedAt,
+			&t.FromCompanyName, &t.ToCompanyName, &t.FromAccountType, &t.ToAccountType,
+			&t.CreatedByName, &t.UpdatedByName); err != nil {
 			utils.RespondDBError(c, err)
 			return
 		}
@@ -209,6 +245,9 @@ func GetTransfers(c *gin.Context) {
 }
 
 // GetTransferByID handles GET /transfers/:id
+// Viewable by a member of EITHER the sending or receiving company — same
+// "either side" logic as GetTransfers above, and the same joined display
+// fields for the transaction detail view.
 func GetTransferByID(c *gin.Context) {
 	id := c.Param("id")
 	if !utils.IsValidUUID(id) {
@@ -216,7 +255,7 @@ func GetTransferByID(c *gin.Context) {
 		return
 	}
 
-	companyID, err := utils.CompanyIDForTransfer(id)
+	fromCompanyID, toCompanyID, err := utils.PartyCompanyIDsForTransfer(id)
 	if err == sql.ErrNoRows {
 		c.JSON(http.StatusNotFound, gin.H{"error": "transfer not found"})
 		return
@@ -227,24 +266,39 @@ func GetTransferByID(c *gin.Context) {
 	}
 
 	userID := c.GetString("user_id")
-	isMember, err := utils.IsCompanyMember(companyID, userID)
+	isSenderMember, err := utils.IsCompanyMember(fromCompanyID, userID)
 	if err != nil {
 		utils.RespondDBError(c, err)
 		return
 	}
-	if !isMember {
+	isReceiverMember, err := utils.IsCompanyMember(toCompanyID, userID)
+	if err != nil {
+		utils.RespondDBError(c, err)
+		return
+	}
+	if !isSenderMember && !isReceiverMember {
 		c.JSON(http.StatusNotFound, gin.H{"error": "transfer not found"})
 		return
 	}
 
 	var t models.Transfer
 	err = config.DB.QueryRow(`
-		SELECT id, company_id, transfer_type, transaction_date, from_account_id, to_account_id,
-		       amount, status, transfer_notes, created_by_user, updated_by_user, created_at, updated_at
-		FROM transfers WHERE id = $1`, id).
+		SELECT t.id, t.company_id, t.transfer_type, t.transaction_date, t.from_account_id, t.to_account_id,
+		       t.amount, t.status, t.transfer_notes, t.created_by_user, t.updated_by_user, t.created_at, t.updated_at,
+		       fc.company_name, tc.company_name, fa.account_type, ta.account_type, cu.name, uu.name
+		FROM transfers t
+		JOIN accounts fa ON fa.id = t.from_account_id
+		JOIN company fc ON fc.id = fa.company_id
+		JOIN accounts ta ON ta.id = t.to_account_id
+		JOIN company tc ON tc.id = ta.company_id
+		JOIN users cu ON cu.id = t.created_by_user
+		JOIN users uu ON uu.id = t.updated_by_user
+		WHERE t.id = $1`, id).
 		Scan(&t.ID, &t.CompanyID, &t.TransferType, &t.TransactionDate,
 			&t.FromAccountID, &t.ToAccountID, &t.Amount, &t.Status, &t.TransferNotes,
-			&t.CreatedByUser, &t.UpdatedByUser, &t.CreatedAt, &t.UpdatedAt)
+			&t.CreatedByUser, &t.UpdatedByUser, &t.CreatedAt, &t.UpdatedAt,
+			&t.FromCompanyName, &t.ToCompanyName, &t.FromAccountType, &t.ToAccountType,
+			&t.CreatedByName, &t.UpdatedByName)
 
 	if err == sql.ErrNoRows {
 		c.JSON(http.StatusNotFound, gin.H{"error": "transfer not found"})

@@ -34,6 +34,10 @@ export const api = {
   deleteCompany: (token, id) => request(`/companies/${id}`, { method: 'DELETE', token }),
 
   listAccounts: (token, companyId) => request(`/accounts?company_id=${companyId}`, { token }),
+  // No company_id -> every account across every company this user belongs
+  // to, used to populate the transfer "from" picker so money can move
+  // between accounts in different companies the user owns.
+  listMyAccounts: (token) => request('/accounts', { token }),
   createAccount: (token, { companyId, accountType, balance, userId }) =>
     request('/accounts', {
       method: 'POST',
@@ -43,12 +47,14 @@ export const api = {
   deleteAccount: (token, id) => request(`/accounts/${id}`, { method: 'DELETE', token }),
 
   listTransfers: (token, companyId) => request(`/transfers?company_id=${companyId}`, { token }),
-  createTransfer: (token, { companyId, transferType, fromAccountId, toAccountId, amount, notes, userId }) =>
+  // No company_id here — the API derives which company this is recorded
+  // under from the from_account itself. to_account_id can be ANY account
+  // that exists, including ones in companies the user has no access to.
+  createTransfer: (token, { transferType, fromAccountId, toAccountId, amount, notes, userId }) =>
     request('/transfers', {
       method: 'POST',
       token,
       body: {
-        company_id: companyId,
         transfer_type: transferType,
         from_account_id: fromAccountId,
         to_account_id: toAccountId,
@@ -59,6 +65,9 @@ export const api = {
     }),
   searchTransfers: (token, companyId, query) =>
     request('/transfers/search', { method: 'POST', token, body: { company_id: companyId, query } }),
+  getTransfer: (token, id) => request(`/transfers/${id}`, { token }),
+  updateTransferStatus: (token, id, status, userId) =>
+    request(`/transfers/${id}/status`, { method: 'PATCH', token, body: { status, updated_by_user: userId } }),
 
   getSummary: (token, companyId) => request(`/companies/${companyId}/transfers/summary`, { token }),
   getInsights: (token, companyId) => request(`/companies/${companyId}/insights`, { token }),
@@ -66,7 +75,13 @@ export const api = {
   listMembers: (token, companyId) => request(`/companies/${companyId}/members`, { token }),
   addMember: (token, companyId, email) =>
     request(`/companies/${companyId}/members`, { method: 'POST', token, body: { email } }),
+  removeMember: (token, companyId, userId) =>
+    request(`/companies/${companyId}/members/${userId}`, { method: 'DELETE', token }),
+  updateMemberRole: (token, companyId, userId, isAdmin) =>
+    request(`/companies/${companyId}/members/${userId}`, { method: 'PATCH', token, body: { is_admin: isAdmin } }),
 }
+
+export const TRANSFER_STATUSES = ['PENDING', 'PROCESSING', 'COMPLETED', 'FAILED', 'CANCELLED', 'REVERSED']
 
 export const ACCOUNT_TYPES = ['BANK', 'CASH']
 export const TRANSFER_TYPES = [

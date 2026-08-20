@@ -43,6 +43,8 @@ func RegisterRoutes(r *gin.Engine) {
 		companies.GET("/:id/insights", handlers.GetCompanyInsights)                 // AI-phrased version of the above
 		companies.GET("/:id/members", handlers.ListCompanyMembers)
 		companies.POST("/:id/members", handlers.AddCompanyMember)
+		companies.DELETE("/:id/members/:user_id", handlers.RemoveCompanyMember)
+		companies.PATCH("/:id/members/:user_id", handlers.UpdateCompanyMemberRole)
 	}
 
 	accounts := protected.Group("/accounts")

@@ -49,52 +49,83 @@ func CreateAccount(c *gin.Context) {
 }
 
 // GetAccounts handles GET /accounts
-// company_id is now REQUIRED (previously optional) — without it there was
-// no way to scope results to companies the requester actually belongs to,
-// and it would have returned every account in the entire database.
+//
+// Two modes:
+//   - ?company_id=<id>  -> accounts for that one company (requester must be
+//     a member of it). Used by the company detail page.
+//   - no company_id     -> every account across EVERY company the requester
+//     is a member of, with each account's company_name joined in. Used by
+//     the transfer "from" picker, so a user can move money between accounts
+//     in different companies they belong to, not just within one company.
+//
+// Either way, this only ever returns accounts the requester actually has
+// access to — never another user's accounts.
 func GetAccounts(c *gin.Context) {
 	companyID := c.Query("company_id")
-
-	if companyID == "" {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "company_id query parameter is required"})
-		return
-	}
-	if !utils.IsValidUUID(companyID) {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "invalid company_id format, expected a UUID"})
-		return
-	}
-
 	userID := c.GetString("user_id")
-	isMember, err := utils.IsCompanyMember(companyID, userID)
-	if err != nil {
-		utils.RespondDBError(c, err)
-		return
-	}
-	if !isMember {
-		c.JSON(http.StatusNotFound, gin.H{"error": "company not found"})
+
+	if companyID != "" {
+		if !utils.IsValidUUID(companyID) {
+			c.JSON(http.StatusBadRequest, gin.H{"error": "invalid company_id format, expected a UUID"})
+			return
+		}
+		isMember, err := utils.IsCompanyMember(companyID, userID)
+		if err != nil {
+			utils.RespondDBError(c, err)
+			return
+		}
+		if !isMember {
+			c.JSON(http.StatusNotFound, gin.H{"error": "company not found"})
+			return
+		}
+
+		rows, err := config.DB.Query(`
+			SELECT a.id, a.company_id, co.company_name, a.account_type, a.current_balance,
+			       a.is_active, a.created_at, a.updated_at, a.created_by, a.updated_by
+			FROM accounts a
+			JOIN company co ON co.id = a.company_id
+			WHERE a.company_id = $1 ORDER BY a.created_at DESC`, companyID)
+		if err != nil {
+			utils.RespondDBError(c, err)
+			return
+		}
+		defer rows.Close()
+		writeAccountRows(c, rows)
 		return
 	}
 
+	// No company_id: every account across every company this user belongs to.
 	rows, err := config.DB.Query(`
-		SELECT id, company_id, account_type, current_balance, is_active, created_at, updated_at, created_by, updated_by
-		FROM accounts WHERE company_id = $1 ORDER BY created_at DESC`, companyID)
+		SELECT a.id, a.company_id, co.company_name, a.account_type, a.current_balance,
+		       a.is_active, a.created_at, a.updated_at, a.created_by, a.updated_by
+		FROM accounts a
+		JOIN company co ON co.id = a.company_id
+		JOIN company_members cm ON cm.company_id = a.company_id
+		WHERE cm.user_id = $1
+		ORDER BY co.company_name, a.created_at DESC`, userID)
 	if err != nil {
 		utils.RespondDBError(c, err)
 		return
 	}
 	defer rows.Close()
+	writeAccountRows(c, rows)
+}
 
+// writeAccountRows scans a rows result of the (id, company_id, company_name,
+// account_type, current_balance, is_active, created_at, updated_at,
+// created_by, updated_by) shape and writes it as the JSON response — shared
+// by both branches of GetAccounts above since they select the same columns.
+func writeAccountRows(c *gin.Context, rows *sql.Rows) {
 	accounts := []models.Account{}
 	for rows.Next() {
 		var acc models.Account
-		if err := rows.Scan(&acc.ID, &acc.CompanyID, &acc.AccountType, &acc.CurrentBalance, &acc.IsActive,
-			&acc.CreatedAt, &acc.UpdatedAt, &acc.CreatedBy, &acc.UpdatedBy); err != nil {
+		if err := rows.Scan(&acc.ID, &acc.CompanyID, &acc.CompanyName, &acc.AccountType, &acc.CurrentBalance,
+			&acc.IsActive, &acc.CreatedAt, &acc.UpdatedAt, &acc.CreatedBy, &acc.UpdatedBy); err != nil {
 			utils.RespondDBError(c, err)
 			return
 		}
 		accounts = append(accounts, acc)
 	}
-
 	c.JSON(http.StatusOK, accounts)
 }
 
@@ -129,10 +160,13 @@ func GetAccountByID(c *gin.Context) {
 
 	var acc models.Account
 	err = config.DB.QueryRow(`
-		SELECT id, company_id, account_type, current_balance, is_active, created_at, updated_at, created_by, updated_by
-		FROM accounts WHERE id = $1`, id).
-		Scan(&acc.ID, &acc.CompanyID, &acc.AccountType, &acc.CurrentBalance, &acc.IsActive,
-			&acc.CreatedAt, &acc.UpdatedAt, &acc.CreatedBy, &acc.UpdatedBy)
+		SELECT a.id, a.company_id, co.company_name, a.account_type, a.current_balance,
+		       a.is_active, a.created_at, a.updated_at, a.created_by, a.updated_by
+		FROM accounts a
+		JOIN company co ON co.id = a.company_id
+		WHERE a.id = $1`, id).
+		Scan(&acc.ID, &acc.CompanyID, &acc.CompanyName, &acc.AccountType, &acc.CurrentBalance,
+			&acc.IsActive, &acc.CreatedAt, &acc.UpdatedAt, &acc.CreatedBy, &acc.UpdatedBy)
 
 	if err == sql.ErrNoRows {
 		c.JSON(http.StatusNotFound, gin.H{"error": "account not found"})
@@ -238,9 +272,6 @@ func DeleteAccount(c *gin.Context) {
 
 	result, err := config.DB.Exec(`DELETE FROM accounts WHERE id = $1`, id)
 	if err != nil {
-		// Most commonly hit here: the account still has transfers
-		// referencing it — a foreign-key violation, now returned as a
-		// clean 400 instead of a raw 500.
 		utils.RespondDBError(c, err)
 		return
 	}

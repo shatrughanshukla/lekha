@@ -232,7 +232,8 @@ button, input, select { font-family: inherit; font-size: 1rem; }
   border: 1px solid var(--oxblood);
 }
 .company-card:hover .delete-btn,
-.account-chip:hover .delete-btn { opacity: 1; }
+.account-chip:hover .delete-btn,
+.member-chip:hover .delete-btn { opacity: 1; }
 .delete-btn:hover:not(.armed) { color: var(--oxblood); }
 
 .error-note {
@@ -453,6 +454,16 @@ button, input, select { font-family: inherit; font-size: 1rem; }
 .account-chip-top { display: flex; align-items: center; justify-content: space-between; color: var(--brass); }
 .account-chip-type { font-size: 0.75rem; text-transform: uppercase; letter-spacing: 0.05em; color: var(--ink-dim); }
 .account-chip-balance { font-size: 1.05rem; }
+.account-chip-id {
+  background: none;
+  border: none;
+  padding: 0;
+  color: var(--ink-dim);
+  font-size: 0.72rem;
+  cursor: pointer;
+  text-align: left;
+}
+.account-chip-id:hover { color: var(--oxblood); }
 
 .new-chip {
   align-items: center;
@@ -491,7 +502,7 @@ button, input, select { font-family: inherit; font-size: 1rem; }
 .ledger-table-head,
 .ledger-table-row {
   display: grid;
-  grid-template-columns: 80px 1fr 140px 110px 120px;
+  grid-template-columns: 80px 1fr 140px 110px 120px 28px;
   gap: 12px;
   align-items: center;
   padding: 10px 8px;
@@ -509,9 +520,32 @@ button, input, select { font-family: inherit; font-size: 1rem; }
   border-bottom: 1px solid var(--paper-shadow);
   font-size: 0.9rem;
 }
+.ledger-table-row.clickable { cursor: pointer; }
 .ledger-table-row:nth-child(even) { background: rgba(0, 0, 0, 0.02); }
 .ledger-table-row:hover { background: var(--paper-deep); }
 .ledger-table-row:last-child { border-bottom: none; }
+
+.note-preview {
+  font-size: 0.76rem;
+  font-style: italic;
+  color: var(--ink-dim);
+  margin-top: 2px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  max-width: 220px;
+}
+
+.info-btn {
+  background: none;
+  border: none;
+  color: var(--ink-dim);
+  cursor: pointer;
+  padding: 4px;
+  border-radius: 3px;
+  justify-self: center;
+}
+.info-btn:hover { color: var(--oxblood); }
 
 .route { display: flex; align-items: center; gap: 4px; font-size: 0.82rem; }
 .align-right { text-align: right; justify-self: end; }
@@ -541,7 +575,90 @@ button, input, select { font-family: inherit; font-size: 1rem; }
   .top-bar { padding: 16px 20px; }
   .page { padding: 28px 16px 60px; }
   .stat-strip { flex-wrap: wrap; gap: 16px; }
-  .ledger-table-head, .ledger-table-row { grid-template-columns: 60px 1fr 90px; }
+  .ledger-table-head, .ledger-table-row { grid-template-columns: 60px 1fr 90px 24px; }
   .ledger-table-head span:nth-child(3),
   .ledger-table-row .route { display: none; }
 }
+
+/* ==================== Modal (transfer detail) ==================== */
+
+.modal-backdrop {
+  position: fixed;
+  inset: 0;
+  background: rgba(20, 24, 31, 0.55);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 20px;
+  z-index: 50;
+}
+
+.modal-card {
+  background: var(--paper);
+  border: 1px solid var(--paper-shadow);
+  border-radius: 4px;
+  width: 100%;
+  max-width: 440px;
+  max-height: 85vh;
+  overflow-y: auto;
+  padding: 24px 26px;
+}
+
+.modal-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 18px;
+}
+.modal-head h3 {
+  font-family: var(--display);
+  font-size: 1.2rem;
+  font-weight: 600;
+  margin: 0;
+}
+.modal-close {
+  background: none;
+  border: none;
+  color: var(--ink-dim);
+  cursor: pointer;
+  padding: 4px;
+}
+.modal-close:hover { color: var(--oxblood); }
+
+.detail-grid { display: flex; flex-direction: column; gap: 14px; }
+.detail-row { display: flex; flex-direction: column; gap: 3px; }
+.detail-label {
+  font-size: 0.7rem;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: var(--ink-dim);
+}
+.detail-value { font-size: 0.95rem; }
+.detail-sub { font-size: 0.75rem; color: var(--ink-dim); margin-top: 2px; }
+
+.status-editor {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+.status-editor select {
+  background: var(--paper-deep);
+  border: 1px solid var(--paper-shadow);
+  border-radius: 3px;
+  padding: 6px 10px;
+  color: var(--ink);
+}
+
+/* ==================== Member admin controls ==================== */
+
+.member-chip { position: relative; }
+.member-actions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-left: 6px;
+  padding-left: 8px;
+  border-left: 1px solid var(--paper-shadow);
+}
+.link-btn.small { font-size: 0.75rem; }

@@ -2,10 +2,15 @@ package models
 
 import "time"
 
-// Account mirrors the `accounts` table.
+// Account mirrors the `accounts` table. CompanyName is not a real column —
+// it's joined in by the listing endpoints (GetAccounts, GetAccountByID) so
+// a client picking between accounts across several companies (e.g. the
+// transfer "from" picker) can show which company each one belongs to
+// without a second round trip. It's empty on Create/Update responses.
 type Account struct {
 	ID             string    `json:"id"`
 	CompanyID      string    `json:"company_id"`
+	CompanyName    string    `json:"company_name,omitempty"`
 	AccountType    string    `json:"account_type"`
 	CurrentBalance float64   `json:"current_balance"`
 	IsActive       bool      `json:"is_active"`
