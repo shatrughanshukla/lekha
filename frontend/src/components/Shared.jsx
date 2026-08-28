@@ -1,10 +1,18 @@
 import { useState } from 'react'
+import lekhaLogo from '../assets/lekhaLogo.png'
 
 // ---------------------------------------------------------------------------
 // Icons — small stroke-based line icons, no external icon library.
 // ---------------------------------------------------------------------------
 
 const iconProps = { width: 18, height: 18, viewBox: '0 0 24 24', fill: 'none', stroke: 'currentColor', strokeWidth: 1.6, strokeLinecap: 'round', strokeLinejoin: 'round' }
+
+// The Lekha mark: the initial "L" whose foot resolves into a checkmark —
+// a ledger entry that's been verified. Not a decorative shape; it encodes
+// what the product actually does (track and reconcile).
+export const IconLekhaMark = ({ width = 26, height = 26, ...p }) => (
+  <img src={lekhaLogo} width={width} height={height} alt="Lekha" style={{ display: 'block', objectFit: 'contain' }} {...p} />
+)
 
 export const IconBank = (p) => (
   <svg {...iconProps} {...p}><path d="M3 10l9-6 9 6" /><path d="M5 10v9M9.5 10v9M14.5 10v9M19 10v9" /><path d="M3 21h18" /></svg>

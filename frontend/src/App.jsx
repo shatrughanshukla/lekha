@@ -2,6 +2,7 @@ import { useState } from 'react'
 import AuthScreen from './components/AuthScreen.jsx'
 import Dashboard from './components/Dashboard.jsx'
 import CompanyView from './components/CompanyView.jsx'
+import { IconLekhaMark } from './components/Shared.jsx'
 
 export default function App() {
   const [token, setToken] = useState(() => localStorage.getItem('lekha_token') || '')
@@ -33,7 +34,7 @@ export default function App() {
   return (
     <div className="app-shell">
       <header className="top-bar">
-        <div className="wordmark small">Lekha</div>
+        <div className="wordmark small"><IconLekhaMark />Lekha</div>
         <div className="top-bar-right">
           <span className="user-name">{user.name}</span>
           <button className="btn-ghost" onClick={signOut}>

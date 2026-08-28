@@ -91,10 +91,10 @@ export const TRANSFER_TYPES = [
   'CASH ACCOUNT TRANSFER',
 ]
 export const STATUS_COLORS = {
-  PENDING: '#8C6A1F',
-  PROCESSING: '#8C6A1F',
-  COMPLETED: '#33513F',
-  FAILED: '#7C2D2D',
-  CANCELLED: '#7C2D2D',
-  REVERSED: '#7C2D2D',
+  PENDING: '#ffb84d',
+  PROCESSING: '#2dd4ff',
+  COMPLETED: '#2af0c0',
+  FAILED: '#ff4d6d',
+  CANCELLED: '#8d92c2',
+  REVERSED: '#c084fc',
 }

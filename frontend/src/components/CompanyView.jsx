@@ -304,7 +304,7 @@ export default function CompanyView({ token, user, company, onBack }) {
         <h2>Accounts</h2>
         <div className="account-row">
           {accounts.map((a) => (
-            <div key={a.id} className="account-chip">
+            <div key={a.id} className={`account-chip type-${a.account_type.toLowerCase()}`}>
               <div className="account-chip-top">
                 {a.account_type === 'BANK' ? <IconBank /> : <IconCash />}
                 <DeleteButton onConfirm={() => removeAccount(a.id)} label="account" />
@@ -385,8 +385,8 @@ export default function CompanyView({ token, user, company, onBack }) {
           <button className="btn-primary small" type="submit">Send</button>
         </form>
         <p className="panel-hint">
-          Sends from one of this company's own accounts. The destination can be ANY account — start typing
-          for suggestions from your own companies, or paste any account ID someone's shared with you.
+          Pick which account here should send the money. For the destination, type to search your
+          own accounts, or paste an account ID a teammate shared with you — it can be any account, in any company.
         </p>
 
         {shownTransfers.length === 0 ? (

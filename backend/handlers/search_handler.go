@@ -95,17 +95,19 @@ func SearchTransfers(c *gin.Context) {
 	}
 
 	query := `
-		SELECT id, company_id, transfer_type, transaction_date, from_account_id, to_account_id,
-		       amount, status, transfer_notes, created_by_user, updated_by_user, created_at, updated_at
-		FROM transfers
-		WHERE company_id = $1
-		  AND ($2 = '' OR status = $2::transfer_status_enum)
-		  AND ($3 = '' OR transfer_type = $3::transfer_type_enum)
-		  AND ($4 = 0 OR amount >= $4)
-		  AND ($5 = 0 OR amount <= $5)
-		  AND ($6 = '' OR transaction_date >= $6::date)
-		  AND ($7 = '' OR transaction_date <= $7::date)
-		ORDER BY created_at DESC`
+		SELECT t.id, t.company_id, t.transfer_type, t.transaction_date, t.from_account_id, t.to_account_id,
+		       t.amount, t.status, t.transfer_notes, t.created_by_user, t.updated_by_user, t.created_at, t.updated_at
+		FROM transfers t
+		JOIN accounts fa ON fa.id = t.from_account_id
+		JOIN accounts ta ON ta.id = t.to_account_id
+		WHERE (fa.company_id = $1::uuid OR ta.company_id = $1::uuid)
+		  AND ($2 = '' OR t.status = $2::transfer_status_enum)
+		  AND ($3 = '' OR t.transfer_type = $3::transfer_type_enum)
+		  AND ($4 = 0 OR t.amount >= $4)
+		  AND ($5 = 0 OR t.amount <= $5)
+		  AND ($6 = '' OR t.transaction_date >= $6::date)
+		  AND ($7 = '' OR t.transaction_date <= $7::date)
+		ORDER BY t.created_at DESC`
 
 	rows, err := config.DB.Query(query, input.CompanyID, filters.Status, filters.TransferType,
 		filters.MinAmount, filters.MaxAmount, filters.DateFrom, filters.DateTo)

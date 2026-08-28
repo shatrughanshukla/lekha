@@ -1,11 +1,11 @@
 import { useState } from 'react'
 import { api } from '../api.js'
-import { ErrorNote } from './Shared.jsx'
+import { ErrorNote, IconLekhaMark } from './Shared.jsx'
 
 const PRINCIPLES = [
-  'Every account, tracked to the rupee.',
-  'Every transfer, locked and reconciled — never half-applied.',
-  'Every question, answerable in plain English.',
+  'Keep every bank and cash account, across every company you run, in one place.',
+  'Move money between accounts and track its status from pending to completed.',
+  'Type something like "pending transfers over 5000" into search to filter instantly.',
 ]
 
 export default function AuthScreen({ onAuthed }) {
@@ -36,7 +36,7 @@ export default function AuthScreen({ onAuthed }) {
         <div className="ruled-lines" aria-hidden="true" />
         <div className="margin-rule" aria-hidden="true" />
         <div className="hero-content">
-          <div className="wordmark hero-wordmark">Lekha</div>
+          <div className="wordmark hero-wordmark"><IconLekhaMark width={64} height={64} />Lekha</div>
           <p className="hero-tagline">A ledger for money that moves — built to be read, not just trusted.</p>
           <ul className="hero-principles">
             {PRINCIPLES.map((p) => (
