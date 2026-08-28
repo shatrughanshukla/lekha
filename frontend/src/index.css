@@ -502,10 +502,19 @@ button, input, select { font-family: inherit; font-size: 1rem; }
 .ledger-table-head,
 .ledger-table-row {
   display: grid;
-  grid-template-columns: 80px 1fr 140px 110px 120px 28px;
+  grid-template-columns: 80px 1fr 170px 110px 120px 28px;
   gap: 12px;
   align-items: center;
   padding: 10px 8px;
+}
+
+/* Grid items default to min-width: auto, which lets long unbreakable
+   content (like a long company name) overflow past its own column into
+   the next one instead of shrinking to fit. This forces every cell to
+   actually respect the column width the grid gave it. */
+.ledger-table-head > *,
+.ledger-table-row > * {
+  min-width: 0;
 }
 
 .ledger-table-head {
@@ -547,7 +556,21 @@ button, input, select { font-family: inherit; font-size: 1rem; }
 }
 .info-btn:hover { color: var(--oxblood); }
 
-.route { display: flex; align-items: center; gap: 4px; font-size: 0.82rem; }
+.route {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 0.82rem;
+  min-width: 0;
+}
+.route-part {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  min-width: 0;
+  max-width: 68px;
+}
+.route svg { flex-shrink: 0; }
 .align-right { text-align: right; justify-self: end; }
 
 .stamp {

@@ -14,6 +14,13 @@ import (
 // buildTransferSummary computes a company's transfer activity numbers with
 // plain SQL — no AI involved. This is the single source of truth for every
 // number GetCompanyInsights later hands to the LLM to phrase.
+//
+// A transfer counts toward a company if EITHER its from_account or its
+// to_account belongs to that company — same rule as GetTransfers uses for
+// the transfer list. Earlier this only checked the transfer's stored
+// company_id, which is always the SENDING company, so any transfer where
+// this company was only the RECEIVING side was silently excluded — the
+// list would show it correctly but insights would report zero activity.
 func buildTransferSummary(companyID string) (models.TransferSummary, error) {
 	summary := models.TransferSummary{
 		CompanyID:     companyID,
@@ -22,14 +29,22 @@ func buildTransferSummary(companyID string) (models.TransferSummary, error) {
 	}
 
 	row := config.DB.QueryRow(`
-		SELECT COUNT(*), COALESCE(SUM(amount), 0), COALESCE(MAX(amount), 0)
-		FROM transfers WHERE company_id = $1`, companyID)
+		SELECT COUNT(*), COALESCE(SUM(t.amount), 0), COALESCE(MAX(t.amount), 0)
+		FROM transfers t
+		JOIN accounts fa ON fa.id = t.from_account_id
+		JOIN accounts ta ON ta.id = t.to_account_id
+		WHERE fa.company_id = $1 OR ta.company_id = $1`, companyID)
 	if err := row.Scan(&summary.TotalTransfers, &summary.TotalAmount, &summary.LargestTransfer); err != nil {
 		return summary, err
 	}
 
 	statusRows, err := config.DB.Query(`
-		SELECT status, COUNT(*) FROM transfers WHERE company_id = $1 GROUP BY status`, companyID)
+		SELECT t.status, COUNT(*)
+		FROM transfers t
+		JOIN accounts fa ON fa.id = t.from_account_id
+		JOIN accounts ta ON ta.id = t.to_account_id
+		WHERE fa.company_id = $1 OR ta.company_id = $1
+		GROUP BY t.status`, companyID)
 	if err != nil {
 		return summary, err
 	}
@@ -44,7 +59,12 @@ func buildTransferSummary(companyID string) (models.TransferSummary, error) {
 	}
 
 	typeRows, err := config.DB.Query(`
-		SELECT transfer_type, COUNT(*) FROM transfers WHERE company_id = $1 GROUP BY transfer_type`, companyID)
+		SELECT t.transfer_type, COUNT(*)
+		FROM transfers t
+		JOIN accounts fa ON fa.id = t.from_account_id
+		JOIN accounts ta ON ta.id = t.to_account_id
+		WHERE fa.company_id = $1 OR ta.company_id = $1
+		GROUP BY t.transfer_type`, companyID)
 	if err != nil {
 		return summary, err
 	}

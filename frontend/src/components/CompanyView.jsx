@@ -427,7 +427,9 @@ export default function CompanyView({ token, user, company, onBack }) {
                     {t.transfer_notes && <div className="note-preview">"{t.transfer_notes}"</div>}
                   </span>
                   <span className="route mono dim">
-                    {fromLabel} <IconArrowRight width={13} height={13} /> {toLabel}
+                    <span className="route-part" title={fromLabel}>{fromLabel}</span>
+                    <IconArrowRight width={13} height={13} />
+                    <span className="route-part" title={toLabel}>{toLabel}</span>
                   </span>
                   <StampBadge status={t.status} color={STATUS_COLORS[t.status]} />
                   <span className="align-right"><Money value={t.amount} /></span>
