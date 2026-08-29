@@ -111,6 +111,100 @@ func GetCompanyTransferSummary(c *gin.Context) {
 	c.JSON(http.StatusOK, summary)
 }
 
+// buildOverviewSummary computes, for every company the given user belongs
+// to, that company's transfer activity — reusing buildTransferSummary (the
+// same sender-OR-receiver rule already used for a single company) rather
+// than re-deriving the join logic, so the two never drift out of sync.
+func buildOverviewSummary(userID string) (models.OverviewSummary, error) {
+	overview := models.OverviewSummary{Companies: []models.CompanyActivity{}}
+
+	rows, err := config.DB.Query(`
+		SELECT co.id, co.company_name
+		FROM company co
+		JOIN company_members cm ON cm.company_id = co.id
+		WHERE cm.user_id = $1
+		ORDER BY co.created_at DESC`, userID)
+	if err != nil {
+		return overview, err
+	}
+	defer rows.Close()
+
+	type companyRow struct{ id, name string }
+	var companyRows []companyRow
+	for rows.Next() {
+		var cr companyRow
+		if err := rows.Scan(&cr.id, &cr.name); err != nil {
+			return overview, err
+		}
+		companyRows = append(companyRows, cr)
+	}
+	if err := rows.Err(); err != nil {
+		return overview, err
+	}
+
+	overview.TotalCompanies = len(companyRows)
+
+	for _, cr := range companyRows {
+		txSummary, err := buildTransferSummary(cr.id)
+		if err != nil {
+			return overview, err
+		}
+		if txSummary.TotalTransfers > 0 {
+			overview.CompaniesWithActivity++
+		}
+		overview.TotalAmountAllCompanies += txSummary.TotalAmount
+		overview.Companies = append(overview.Companies, models.CompanyActivity{
+			CompanyID:      cr.id,
+			CompanyName:    cr.name,
+			TotalTransfers: txSummary.TotalTransfers,
+			TotalAmount:    txSummary.TotalAmount,
+		})
+	}
+
+	return overview, nil
+}
+
+const overviewSystemPrompt = `You are given a JSON object of already-computed, correct numeric statistics about a user's companies and their bank transfer activity, across every company they belong to. Write a short, plain-English paragraph (3-5 sentences) summarizing it for a business owner glancing at their dashboard — mention how many companies they have, which company or companies are the most active or hold the most transaction value, and call out any company with no activity yet. Do not invent, estimate, or recalculate any number — only describe the numbers given to you, in your own words. Do not mention JSON or that you were given data. Write only the summary paragraph, no preamble.`
+
+// GetOverviewInsights handles GET /insights/overview
+//
+// Same pattern as GetCompanyInsights: the numeric summary is computed
+// first, entirely in Go/SQL, and is always correct on its own. Only those
+// already-computed numbers are handed to the LLM, which only ever phrases
+// them into a paragraph — it never calculates anything itself.
+func GetOverviewInsights(c *gin.Context) {
+	userID := c.GetString("user_id")
+
+	summary, err := buildOverviewSummary(userID)
+	if err != nil {
+		utils.RespondDBError(c, err)
+		return
+	}
+
+	summaryJSON, err := json.Marshal(summary)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to prepare summary for insight generation"})
+		return
+	}
+
+	insight, err := utils.CallGemini(overviewSystemPrompt, string(summaryJSON))
+	if err != nil {
+		// The numeric summary is still fully correct and useful even if the
+		// AI paragraph fails — degrade gracefully instead of failing the
+		// whole request just because the AI layer had a hiccup.
+		c.JSON(http.StatusOK, models.OverviewInsightsResponse{
+			Summary: summary,
+			Insight: "AI summary unavailable right now: " + err.Error(),
+		})
+		return
+	}
+
+	c.JSON(http.StatusOK, models.OverviewInsightsResponse{
+		Summary: summary,
+		Insight: insight,
+	})
+}
+
 const insightsSystemPrompt = `You are given a JSON object of already-computed, correct numeric statistics about a company's bank transfer activity. Write a short, plain-English paragraph (2-4 sentences) summarizing it for a business owner glancing at their dashboard. Do not invent, estimate, or recalculate any number — only describe the numbers given to you, in your own words. Do not mention JSON or that you were given data. Write only the summary paragraph, no preamble.`
 
 // GetCompanyInsights handles GET /companies/:id/insights

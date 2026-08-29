@@ -20,3 +20,32 @@ type CompanyInsightsResponse struct {
 	Summary TransferSummary `json:"summary"`
 	Insight string          `json:"insight"`
 }
+
+// CompanyActivity is one company's transfer activity as seen from the
+// cross-company overview — the same numeric source as TransferSummary
+// (buildTransferSummary), just the subset of it relevant when comparing
+// many companies side by side rather than looking at one in detail.
+type CompanyActivity struct {
+	CompanyID      string  `json:"company_id"`
+	CompanyName    string  `json:"company_name"`
+	TotalTransfers int     `json:"total_transfers"`
+	TotalAmount    float64 `json:"total_amount"`
+}
+
+// OverviewSummary is every company the current user belongs to, with each
+// one's transfer activity — computed entirely with plain SQL. Same
+// principle as TransferSummary: the LLM that later phrases this into a
+// paragraph never calculates anything itself, only describes these numbers.
+type OverviewSummary struct {
+	TotalCompanies          int                `json:"total_companies"`
+	CompaniesWithActivity   int                `json:"companies_with_activity"`
+	TotalAmountAllCompanies float64            `json:"total_amount_all_companies"`
+	Companies               []CompanyActivity  `json:"companies"`
+}
+
+// OverviewInsightsResponse wraps the numeric cross-company overview
+// together with the AI-generated plain-English paragraph describing it.
+type OverviewInsightsResponse struct {
+	Summary OverviewSummary `json:"summary"`
+	Insight string          `json:"insight"`
+}

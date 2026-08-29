@@ -27,6 +27,9 @@ export const api = {
   signIn: (email, password) =>
     request('/auth/signin', { method: 'POST', body: { email, password } }),
 
+  getUser: (token, id) => request(`/users/${id}`, { token }),
+  updateUser: (token, id, updates) => request(`/users/${id}`, { method: 'PUT', token, body: updates }),
+
   listCompanies: (token) => request('/companies', { token }),
   createCompany: (token, companyName, userId) =>
     request('/companies', { method: 'POST', token, body: { company_name: companyName, created_by: userId } }),
@@ -70,6 +73,7 @@ export const api = {
 
   getSummary: (token, companyId) => request(`/companies/${companyId}/transfers/summary`, { token }),
   getInsights: (token, companyId) => request(`/companies/${companyId}/insights`, { token }),
+  getOverviewInsights: (token) => request('/insights/overview', { token }),
 
   listMembers: (token, companyId) => request(`/companies/${companyId}/members`, { token }),
   addMember: (token, companyId, email) =>

@@ -28,6 +28,17 @@
   --mint: #2af0c0;
   --danger: #ff4d6d;
 
+  /* -- tokens for values that were hardcoded, now theme-aware -- */
+  --money-color: #ffd166;
+  --error-text: #ffb3c0;
+  --error-bg: rgba(255, 77, 109, 0.10);
+  --error-border: rgba(255, 77, 109, 0.35);
+  --select-option-bg: #0d0e22;
+  --select-option-text: #edeeff;
+  --grid-line: rgba(255, 255, 255, 0.05);
+  --aurora-opacity: 1;
+  --topbar-bg: rgba(9, 10, 28, 0.6);
+
   --grad-signature: linear-gradient(115deg, var(--violet) 0%, var(--cyan) 48%, var(--magenta) 100%);
 
   --display: 'Space Grotesk', 'Manrope', system-ui, sans-serif;
@@ -37,6 +48,34 @@
   --radius: 18px;
   --radius-sm: 12px;
   color-scheme: dark;
+}
+
+/* -- Light theme: same brand gradient and signal colors (the identity
+   stays put), but surfaces flip to soft off-white glass and ink-dark
+   text. Toggled by setting data-theme="light" on <html>. -- */
+[data-theme='light'] {
+  --void: #f3f4fb;
+  --void-2: #ecebfa;
+  --glass: rgba(20, 20, 45, 0.035);
+  --glass-hi: rgba(20, 20, 45, 0.06);
+  --glass-border: rgba(20, 20, 45, 0.10);
+  --glass-border-hi: rgba(20, 20, 45, 0.22);
+
+  --text: #14152e;
+  --text-dim: #565a82;
+  --text-faint: #8487ab;
+
+  --money-color: #8a5a00;
+  --error-text: #b0203a;
+  --error-bg: rgba(255, 77, 109, 0.08);
+  --error-border: rgba(255, 77, 109, 0.35);
+  --select-option-bg: #ffffff;
+  --select-option-text: #14152e;
+  --grid-line: rgba(20, 20, 45, 0.06);
+  --aurora-opacity: 0.55;
+  --topbar-bg: rgba(255, 255, 255, 0.65);
+
+  color-scheme: light;
 }
 
 @media (prefers-reduced-motion: reduce) {
@@ -69,6 +108,7 @@ body::before {
     radial-gradient(40% 36% at 78% 92%, rgba(255, 63, 176, 0.20), transparent 70%),
     radial-gradient(30% 26% at 8% 88%, rgba(42, 240, 192, 0.14), transparent 70%);
   background-repeat: no-repeat;
+  opacity: var(--aurora-opacity);
   animation: auroraDrift 26s ease-in-out infinite alternate;
 }
 
@@ -81,8 +121,8 @@ body::after {
   pointer-events: none;
   opacity: 0.5;
   background-image:
-    linear-gradient(rgba(255, 255, 255, 0.05) 1px, transparent 1px),
-    linear-gradient(90deg, rgba(255, 255, 255, 0.05) 1px, transparent 1px);
+    linear-gradient(var(--grid-line) 1px, transparent 1px),
+    linear-gradient(90deg, var(--grid-line) 1px, transparent 1px);
   background-size: 42px 42px;
   -webkit-mask-image: radial-gradient(80% 65% at 50% 20%, #000 0%, transparent 75%);
   mask-image: radial-gradient(80% 65% at 50% 20%, #000 0%, transparent 75%);
@@ -113,7 +153,7 @@ button, input, select { font-family: inherit; font-size: 1rem; }
   font-family: var(--mono);
   font-variant-numeric: tabular-nums;
   font-weight: 800;
-  color: #ffd166;
+  color: var(--money-color);
 }
 
 .link-btn {
@@ -174,8 +214,8 @@ button, input, select { font-family: inherit; font-size: 1rem; }
   position: absolute;
   inset: 0;
   background-image:
-    linear-gradient(rgba(255, 255, 255, 0.045) 1px, transparent 1px),
-    linear-gradient(90deg, rgba(255, 255, 255, 0.045) 1px, transparent 1px);
+    linear-gradient(var(--grid-line) 1px, transparent 1px),
+    linear-gradient(90deg, var(--grid-line) 1px, transparent 1px);
   background-size: 38px 38px;
   -webkit-mask-image: linear-gradient(to bottom, transparent, #000 25%, #000 75%, transparent);
   mask-image: linear-gradient(to bottom, transparent, #000 25%, #000 75%, transparent);
@@ -258,7 +298,7 @@ button, input, select { font-family: inherit; font-size: 1rem; }
   display: flex;
   gap: 4px;
   margin-bottom: 26px;
-  background: rgba(255, 255, 255, 0.04);
+  background: var(--glass-hi);
   border-radius: 999px;
   padding: 4px;
 }
@@ -295,7 +335,7 @@ button, input, select { font-family: inherit; font-size: 1rem; }
   display: block;
   width: 100%;
   margin-top: 8px;
-  background: rgba(255, 255, 255, 0.035);
+  background: var(--glass);
   border: 1px solid var(--glass-border);
   border-radius: 10px;
   padding: 11px 12px;
@@ -340,7 +380,7 @@ button, input, select { font-family: inherit; font-size: 1rem; }
 
 .btn-ghost {
   position: relative;
-  background: rgba(255, 255, 255, 0.03);
+  background: var(--glass);
   border: 1px solid var(--glass-border);
   color: var(--text-dim);
   border-radius: 999px;
@@ -383,12 +423,12 @@ button, input, select { font-family: inherit; font-size: 1rem; }
 .delete-btn:hover:not(.armed) { color: var(--danger); }
 
 .error-note {
-  color: #ffb3c0;
+  color: var(--error-text);
   font-size: 0.85rem;
   margin: 4px 0 16px;
   padding: 10px 14px;
-  background: rgba(255, 77, 109, 0.10);
-  border: 1px solid rgba(255, 77, 109, 0.35);
+  background: var(--error-bg);
+  border: 1px solid var(--error-border);
   border-radius: 10px;
 }
 
@@ -401,7 +441,7 @@ button, input, select { font-family: inherit; font-size: 1rem; }
   align-items: center;
   justify-content: space-between;
   padding: 18px 40px;
-  background: rgba(9, 10, 28, 0.6);
+  background: var(--topbar-bg);
   backdrop-filter: blur(16px);
   border-bottom: 1px solid var(--glass-border);
   position: sticky;
@@ -410,6 +450,104 @@ button, input, select { font-family: inherit; font-size: 1rem; }
 }
 .top-bar-right { display: flex; align-items: center; gap: 18px; }
 .user-name { color: var(--text-dim); font-size: 0.9rem; }
+
+.user-name-btn {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  background: none;
+  border: none;
+  padding: 4px 6px;
+  border-radius: 999px;
+  cursor: pointer;
+  transition: background 0.15s;
+}
+.user-name-btn:hover { background: var(--glass); }
+.user-name-btn:hover .user-name { color: var(--text); }
+
+.user-avatar-sm {
+  width: 28px;
+  height: 28px;
+  border-radius: 50%;
+  object-fit: cover;
+  flex-shrink: 0;
+}
+.user-avatar-fallback {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: var(--grad-signature);
+  color: #f5f6ff;
+  font-family: var(--display);
+  font-weight: 700;
+  font-size: 0.78rem;
+}
+
+.profile-avatar-row { display: flex; justify-content: center; margin-bottom: 20px; }
+.profile-avatar-lg {
+  width: 84px;
+  height: 84px;
+  border-radius: 50%;
+  object-fit: cover;
+  box-shadow: 0 0 0 3px var(--glass-border), 0 8px 24px rgba(0, 0, 0, 0.3);
+}
+.profile-avatar-lg.profile-avatar-fallback {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: var(--grad-signature);
+  color: #f5f6ff;
+  font-family: var(--display);
+  font-weight: 700;
+  font-size: 2rem;
+}
+
+.profile-form { display: flex; flex-direction: column; gap: 16px; }
+.profile-form label {
+  display: block;
+  font-size: 0.72rem;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: var(--text-dim);
+  font-weight: 600;
+}
+.profile-form input {
+  display: block;
+  width: 100%;
+  margin-top: 8px;
+  background: var(--glass);
+  border: 1px solid var(--glass-border);
+  border-radius: 10px;
+  padding: 11px 12px;
+  color: var(--text);
+  transition: border-color 0.15s, box-shadow 0.15s, background 0.15s;
+}
+.profile-form input:focus {
+  border-color: var(--cyan);
+  outline: none;
+  box-shadow: 0 0 0 3px rgba(45, 212, 255, 0.15);
+}
+.profile-form .panel-hint { margin: -6px 0 0; font-size: 0.78rem; }
+
+.theme-toggle {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 38px;
+  height: 38px;
+  border-radius: 50%;
+  background: var(--glass);
+  border: 1px solid var(--glass-border);
+  color: var(--text-dim);
+  cursor: pointer;
+  transition: color 0.15s, border-color 0.15s, box-shadow 0.15s, transform 0.15s;
+}
+.theme-toggle:hover {
+  color: var(--cyan);
+  border-color: var(--cyan);
+  box-shadow: 0 0 14px rgba(45, 212, 255, 0.3);
+  transform: rotate(15deg);
+}
 
 .page { max-width: 980px; margin: 0 auto; padding: 44px 24px 90px; }
 
@@ -528,7 +666,7 @@ button, input, select { font-family: inherit; font-size: 1rem; }
 .new-card-form { gap: 12px; box-shadow: none !important; transform: none !important; }
 .new-card-form::before { display: none; }
 .new-card-form input {
-  background: rgba(255, 255, 255, 0.04);
+  background: var(--glass);
   border: 1px solid var(--glass-border);
   border-radius: 8px;
   padding: 9px 10px;
@@ -650,16 +788,15 @@ button, input, select { font-family: inherit; font-size: 1rem; }
 
 .inline-form { display: flex; gap: 10px; margin-bottom: 12px; flex-wrap: wrap; align-items: center; }
 .inline-form input, .inline-form select {
-  background: rgba(255, 255, 255, 0.035);
+  background: var(--glass);
   border: 1px solid var(--glass-border);
   border-radius: 8px;
   padding: 9px 12px;
   color: var(--text);
   min-width: 0;
   transition: border-color 0.15s, box-shadow 0.15s;
-  color-scheme: dark;
 }
-.inline-form select option { background: #0d0e22; color: #edeeff; }
+.inline-form select option { background: var(--select-option-bg); color: var(--select-option-text); }
 .inline-form input:focus, .inline-form select:focus {
   outline: none;
   border-color: var(--cyan);
@@ -814,15 +951,14 @@ button, input, select { font-family: inherit; font-size: 1rem; }
 .new-chip-form::before { display: none; }
 .new-chip-form .new-card-actions { flex-wrap: wrap; }
 .new-chip-form select, .new-chip-form input {
-  background: rgba(255, 255, 255, 0.05);
+  background: var(--glass-hi);
   border: 1px solid var(--glass-border);
   border-radius: 6px;
   padding: 6px 8px;
   color: var(--text);
   font-size: 0.85rem;
-  color-scheme: dark;
 }
-.new-chip-form select option { background: #0d0e22; color: #edeeff; }
+.new-chip-form select option { background: var(--select-option-bg); color: var(--select-option-text); }
 
 .pill {
   font-size: 0.66rem;
@@ -999,7 +1135,7 @@ button, input, select { font-family: inherit; font-size: 1rem; }
   .ledger-table-row > *:nth-child(1) { grid-area: date; }
   .ledger-table-row > *:nth-child(2) { grid-area: type; }
   .ledger-table-row .route { display: none; }
-  .ledger-table-row > *:nth-child(4) { grid-area: status; justify-self: start; }
+  .ledger-table-row > *:nth-child(4) { grid-area: status; justify-self: end; }
   .ledger-table-row > *:nth-child(5) { grid-area: amount; justify-self: end; }
   .ledger-table-row > *:nth-child(6) { grid-area: btn; justify-self: end; }
   .note-preview { max-width: 100%; }
@@ -1110,14 +1246,13 @@ button, input, select { font-family: inherit; font-size: 1rem; }
   flex-wrap: wrap;
 }
 .status-editor select {
-  background: rgba(255, 255, 255, 0.05);
+  background: var(--glass-hi);
   border: 1px solid var(--glass-border);
   border-radius: 8px;
   padding: 7px 11px;
   color: var(--text);
-  color-scheme: dark;
 }
-.status-editor select option { background: #0d0e22; color: #edeeff; }
+.status-editor select option { background: var(--select-option-bg); color: var(--select-option-text); }
 
 /* ==================== Member admin controls ==================== */
 

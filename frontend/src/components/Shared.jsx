@@ -38,6 +38,12 @@ export const IconArrowRight = (p) => (
 export const IconBuilding = (p) => (
   <svg {...iconProps} {...p}><rect x="4" y="3" width="16" height="18" rx="1" /><path d="M9 8h.01M15 8h.01M9 12h.01M15 12h.01M9 16h.01M15 16h.01" /></svg>
 )
+export const IconSun = (p) => (
+  <svg {...iconProps} {...p}><circle cx="12" cy="12" r="4.2" /><path d="M12 2.5v2.6M12 18.9v2.6M4.6 4.6l1.85 1.85M17.55 17.55l1.85 1.85M2.5 12h2.6M18.9 12h2.6M4.6 19.4l1.85-1.85M17.55 6.45l1.85-1.85" /></svg>
+)
+export const IconMoon = (p) => (
+  <svg {...iconProps} {...p}><path d="M20 14.5A8.5 8.5 0 1110 3.2 6.8 6.8 0 0020 14.5z" /></svg>
+)
 export const IconPeople = (p) => (
   <svg {...iconProps} {...p}><circle cx="9" cy="8" r="3" /><path d="M3 20c0-3.3 2.7-6 6-6s6 2.7 6 6" /><circle cx="17" cy="7" r="2.5" /><path d="M15 13.2c2.6.4 4.5 2.6 5 6.8" /></svg>
 )

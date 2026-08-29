@@ -19,7 +19,7 @@ import (
 
 // GetUsers handles GET /users
 func GetUsers(c *gin.Context) {
-	rows, err := config.DB.Query(`SELECT id, name, email, created_at, updated_at FROM users ORDER BY created_at DESC`)
+	rows, err := config.DB.Query(`SELECT id, name, email, profile_picture_url, created_at, updated_at FROM users ORDER BY created_at DESC`)
 	if err != nil {
 		utils.RespondDBError(c, err)
 		return
@@ -29,10 +29,12 @@ func GetUsers(c *gin.Context) {
 	users := []models.User{}
 	for rows.Next() {
 		var u models.User
-		if err := rows.Scan(&u.ID, &u.Name, &u.Email, &u.CreatedAt, &u.UpdatedAt); err != nil {
+		var picture sql.NullString
+		if err := rows.Scan(&u.ID, &u.Name, &u.Email, &picture, &u.CreatedAt, &u.UpdatedAt); err != nil {
 			utils.RespondDBError(c, err)
 			return
 		}
+		u.ProfilePictureURL = utils.NullStringToPtr(picture)
 		users = append(users, u)
 	}
 
@@ -48,8 +50,9 @@ func GetUserByID(c *gin.Context) {
 	}
 
 	var u models.User
-	query := `SELECT id, name, email, created_at, updated_at FROM users WHERE id = $1`
-	err := config.DB.QueryRow(query, id).Scan(&u.ID, &u.Name, &u.Email, &u.CreatedAt, &u.UpdatedAt)
+	var picture sql.NullString
+	query := `SELECT id, name, email, profile_picture_url, created_at, updated_at FROM users WHERE id = $1`
+	err := config.DB.QueryRow(query, id).Scan(&u.ID, &u.Name, &u.Email, &picture, &u.CreatedAt, &u.UpdatedAt)
 
 	if err == sql.ErrNoRows {
 		c.JSON(http.StatusNotFound, gin.H{"error": "user not found"})
@@ -59,6 +62,7 @@ func GetUserByID(c *gin.Context) {
 		utils.RespondDBError(c, err)
 		return
 	}
+	u.ProfilePictureURL = utils.NullStringToPtr(picture)
 
 	c.JSON(http.StatusOK, u)
 }
@@ -81,13 +85,15 @@ func UpdateUser(c *gin.Context) {
 	query := `
 		UPDATE users
 		SET name = COALESCE($1, name),
-		    email = COALESCE($2, email)
-		WHERE id = $3
-		RETURNING id, name, email, created_at, updated_at`
+		    email = COALESCE($2, email),
+		    profile_picture_url = COALESCE($3, profile_picture_url)
+		WHERE id = $4
+		RETURNING id, name, email, profile_picture_url, created_at, updated_at`
 
 	var u models.User
-	err := config.DB.QueryRow(query, input.Name, input.Email, id).
-		Scan(&u.ID, &u.Name, &u.Email, &u.CreatedAt, &u.UpdatedAt)
+	var picture sql.NullString
+	err := config.DB.QueryRow(query, input.Name, input.Email, input.ProfilePictureURL, id).
+		Scan(&u.ID, &u.Name, &u.Email, &picture, &u.CreatedAt, &u.UpdatedAt)
 
 	if err == sql.ErrNoRows {
 		c.JSON(http.StatusNotFound, gin.H{"error": "user not found"})
@@ -97,6 +103,7 @@ func UpdateUser(c *gin.Context) {
 		utils.RespondDBError(c, err)
 		return
 	}
+	u.ProfilePictureURL = utils.NullStringToPtr(picture)
 
 	c.JSON(http.StatusOK, u)
 }

@@ -29,13 +29,14 @@ func SignUp(c *gin.Context) {
 	}
 
 	var user models.User
+	var picture sql.NullString
 	query := `
 		INSERT INTO users (name, email, password_hash)
 		VALUES ($1, $2, $3)
-		RETURNING id, name, email, created_at, updated_at`
+		RETURNING id, name, email, profile_picture_url, created_at, updated_at`
 
 	err = config.DB.QueryRow(query, input.Name, input.Email, string(hashedPassword)).
-		Scan(&user.ID, &user.Name, &user.Email, &user.CreatedAt, &user.UpdatedAt)
+		Scan(&user.ID, &user.Name, &user.Email, &picture, &user.CreatedAt, &user.UpdatedAt)
 	if err != nil {
 		// utils.RespondDBError correctly returns 409 for a genuine unique
 		// constraint violation on email, and a real 500 for anything else —
@@ -43,6 +44,7 @@ func SignUp(c *gin.Context) {
 		utils.RespondDBError(c, err)
 		return
 	}
+	user.ProfilePictureURL = utils.NullStringToPtr(picture)
 
 	token, err := utils.GenerateToken(user.ID, user.Email)
 	if err != nil {
@@ -63,9 +65,10 @@ func SignIn(c *gin.Context) {
 
 	var user models.User
 	var passwordHash string
-	query := `SELECT id, name, email, password_hash, created_at, updated_at FROM users WHERE email = $1`
+	var picture sql.NullString
+	query := `SELECT id, name, email, password_hash, profile_picture_url, created_at, updated_at FROM users WHERE email = $1`
 	err := config.DB.QueryRow(query, input.Email).
-		Scan(&user.ID, &user.Name, &user.Email, &passwordHash, &user.CreatedAt, &user.UpdatedAt)
+		Scan(&user.ID, &user.Name, &user.Email, &passwordHash, &picture, &user.CreatedAt, &user.UpdatedAt)
 
 	if err == sql.ErrNoRows {
 		// Deliberately vague — don't reveal whether the email exists.
@@ -76,6 +79,7 @@ func SignIn(c *gin.Context) {
 		utils.RespondDBError(c, err)
 		return
 	}
+	user.ProfilePictureURL = utils.NullStringToPtr(picture)
 
 	if err := bcrypt.CompareHashAndPassword([]byte(passwordHash), []byte(input.Password)); err != nil {
 		c.JSON(http.StatusUnauthorized, gin.H{"error": "invalid email or password"})

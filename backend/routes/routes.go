@@ -47,6 +47,11 @@ func RegisterRoutes(r *gin.Engine) {
 		companies.PATCH("/:id/members/:user_id", handlers.UpdateCompanyMemberRole)
 	}
 
+	insights := protected.Group("/insights")
+	{
+		insights.GET("/overview", handlers.GetOverviewInsights) // AI-phrased summary across every company the user belongs to
+	}
+
 	accounts := protected.Group("/accounts")
 	{
 		accounts.POST("", handlers.CreateAccount)

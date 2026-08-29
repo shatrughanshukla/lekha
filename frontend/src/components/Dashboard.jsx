@@ -1,6 +1,6 @@
 import { useState, useEffect, useMemo } from 'react'
 import { api } from '../api.js'
-import { ErrorNote, DeleteButton, IconSearch, IconPlus, IconBuilding } from './Shared.jsx'
+import { ErrorNote, DeleteButton, IconSearch, IconPlus, IconBuilding, IconSparkle } from './Shared.jsx'
 
 export default function Dashboard({ token, user, onOpenCompany }) {
   const [companies, setCompanies] = useState([])
@@ -9,6 +9,8 @@ export default function Dashboard({ token, user, onOpenCompany }) {
   const [newName, setNewName] = useState('')
   const [error, setError] = useState('')
   const [loading, setLoading] = useState(true)
+  const [insights, setInsights] = useState(null)
+  const [insightsLoading, setInsightsLoading] = useState(false)
 
   async function refresh() {
     setLoading(true)
@@ -25,6 +27,17 @@ export default function Dashboard({ token, user, onOpenCompany }) {
     refresh()
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
+
+  async function loadInsights() {
+    setInsightsLoading(true)
+    try {
+      setInsights(await api.getOverviewInsights(token))
+    } catch (err) {
+      setError(err.message)
+    } finally {
+      setInsightsLoading(false)
+    }
+  }
 
   async function createCompany(e) {
     e.preventDefault()
@@ -70,6 +83,20 @@ export default function Dashboard({ token, user, onOpenCompany }) {
           <input placeholder="Filter by name…" value={filter} onChange={(e) => setFilter(e.target.value)} />
         </div>
       </div>
+
+      <section className="panel">
+        <div className="panel-head">
+          <h2><IconSparkle /> Insights</h2>
+          <button className="btn-ghost small" onClick={loadInsights} disabled={insightsLoading}>
+            {insightsLoading ? 'Thinking…' : insights ? 'Refresh' : 'Generate'}
+          </button>
+        </div>
+        {insights ? (
+          <p className="insight-text">{insights.insight}</p>
+        ) : (
+          <p className="panel-hint">AI-written summary across every company you belong to — total activity, which companies are busiest, and which have none yet.</p>
+        )}
+      </section>
 
       <ErrorNote message={error} />
 
