@@ -465,16 +465,18 @@ function MemberAvatar({ member }) {
 
   return (
     <div className="member-avatar">
-      {showImage ? (
-        <img
-          src={member.profile_picture_url}
-          alt={member.name}
-          className="member-avatar-img"
-          onError={() => setBroken(true)}
-        />
-      ) : (
-        member.name?.[0]?.toUpperCase() || '?'
-      )}
+      <div className="member-avatar-clip">
+        {showImage ? (
+          <img
+            src={member.profile_picture_url}
+            alt={member.name}
+            className="member-avatar-img"
+            onError={() => setBroken(true)}
+          />
+        ) : (
+          member.name?.[0]?.toUpperCase() || '?'
+        )}
+      </div>
       {member.is_admin && (
         <span className="member-crown" title="Admin">
           <IconCrown width={10} height={10} />
