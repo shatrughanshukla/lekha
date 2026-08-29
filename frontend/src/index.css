@@ -73,7 +73,7 @@
   --select-option-text: #14152e;
   --grid-line: rgba(20, 20, 45, 0.06);
   --aurora-opacity: 0.55;
-  --topbar-bg: rgba(120, 88, 96, 0.62);
+  --topbar-bg: rgba(200, 182, 227, 0.68);
 
   color-scheme: light;
 }
@@ -85,7 +85,7 @@
 [data-theme='light'] .top-bar .user-name,
 [data-theme='light'] .top-bar .theme-toggle,
 [data-theme='light'] .top-bar .btn-ghost {
-  color: #f7f1f3;
+  color: #5913a0;
 }
 [data-theme='light'] .top-bar .theme-toggle,
 [data-theme='light'] .top-bar .btn-ghost {
