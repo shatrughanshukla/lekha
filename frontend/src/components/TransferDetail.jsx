@@ -64,13 +64,13 @@ export default function TransferDetail({ token, user, transferId, onClose, onCha
           </div>
           <div className="detail-row">
             <span className="detail-label">Created</span>
-            <span className="detail-value">
+            <span className="detail-value timestamp">
               {t.created_by_name} — {new Date(t.created_at).toLocaleString()}
             </span>
           </div>
           <div className="detail-row">
             <span className="detail-label">Last updated</span>
-            <span className="detail-value">
+            <span className="detail-value timestamp">
               {t.updated_by_name} — {new Date(t.updated_at).toLocaleString()}
             </span>
           </div>

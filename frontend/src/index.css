@@ -181,17 +181,8 @@ button, input, select { font-family: inherit; font-size: 1rem; }
   mask-image: linear-gradient(to bottom, transparent, #000 25%, #000 75%, transparent);
 }
 
-/* A vertical light beam sweeping the hero, standing in for the old margin
-   rule — a signal running down the page rather than a line drawn on it. */
 .margin-rule {
-  position: absolute;
-  top: 0;
-  bottom: 0;
-  left: 96px;
-  width: 2px;
-  background: linear-gradient(to bottom, transparent, var(--cyan), var(--violet), transparent);
-  opacity: 0.55;
-  filter: drop-shadow(0 0 8px rgba(45, 212, 255, 0.6));
+  display: none;
 }
 
 .hero-content {
@@ -680,24 +671,83 @@ button, input, select { font-family: inherit; font-size: 1rem; }
 
 .account-row { display: flex; gap: 14px; flex-wrap: wrap; }
 
-.member-row { display: flex; gap: 10px; flex-wrap: wrap; margin-bottom: 14px; }
+.member-row {
+  display: flex;
+  gap: 12px;
+  flex-wrap: nowrap;
+  overflow-x: auto;
+  overflow-y: hidden;
+  padding-bottom: 8px;
+  margin-bottom: 14px;
+  scroll-snap-type: x proximity;
+  -webkit-overflow-scrolling: touch;
+}
 
 .member-chip {
   position: relative;
+  flex: 0 0 168px;
+  width: 168px;
+  scroll-snap-align: start;
   background: var(--glass);
   border: 1px solid var(--glass-border);
-  border-radius: 999px;
-  padding: 7px 15px;
+  border-radius: var(--radius-sm);
+  padding: 14px;
   display: flex;
-  align-items: baseline;
-  gap: 8px;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 6px;
   font-size: 0.85rem;
   color: var(--amber);
   transition: border-color 0.15s;
 }
 .member-chip:hover { border-color: var(--glass-border-hi); }
-.member-name { font-weight: 700; color: var(--text); }
-.member-email { font-size: 0.75rem; }
+
+.member-avatar {
+  position: relative;
+  width: 34px;
+  height: 34px;
+  min-width: 34px;
+  border-radius: 50%;
+  background: var(--grad-signature);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-family: var(--display);
+  font-weight: 700;
+  font-size: 0.9rem;
+  color: #f5f6ff;
+  margin-bottom: 2px;
+}
+.member-crown {
+  position: absolute;
+  top: -5px;
+  right: -5px;
+  width: 17px;
+  height: 17px;
+  border-radius: 50%;
+  background: var(--void-2);
+  border: 1px solid var(--glass-border-hi);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--amber);
+}
+
+.member-name {
+  font-weight: 700;
+  color: var(--text);
+  width: 100%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.member-email {
+  font-size: 0.72rem;
+  width: 100%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
 
 .account-chip {
   position: relative;
@@ -789,7 +839,7 @@ button, input, select { font-family: inherit; font-size: 1rem; }
 
 /* ==================== Ledger table ==================== */
 
-.ledger-table { border-left: 2px solid transparent; border-image: linear-gradient(var(--violet), var(--cyan)) 1; padding-left: 16px; }
+.ledger-table { border-left: 2px solid transparent; border-image: linear-gradient(var(--violet), var(--cyan)) 1; padding-left: 16px; margin-top: 24px; }
 
 .ledger-table-head,
 .ledger-table-row {
@@ -915,8 +965,11 @@ button, input, select { font-family: inherit; font-size: 1rem; }
   .company-grid { grid-template-columns: repeat(auto-fill, minmax(160px, 1fr)); gap: 14px; }
 
   .statement-header { padding: 20px 18px; }
-  .stat-strip { flex-wrap: wrap; gap: 16px; row-gap: 12px; }
+  .stat-strip { display: grid; grid-template-columns: repeat(3, 1fr); flex-wrap: nowrap; gap: 10px; row-gap: 0; }
   .stat-divider { display: none; }
+  .stat { min-width: 0; }
+  .stat-label { font-size: 0.68rem; }
+  .stat-value { font-size: 0.95rem; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 
   .panel { padding: 18px; }
 
@@ -928,25 +981,45 @@ button, input, select { font-family: inherit; font-size: 1rem; }
   .account-row { gap: 12px; }
   .account-chip, .new-chip, .new-chip-form { width: 100%; }
   .member-row { gap: 8px; }
-  .member-chip { flex-wrap: wrap; }
+  .member-chip { flex: 0 0 148px; width: 148px; padding: 12px; }
 
-  .ledger-table { padding-left: 12px; overflow-x: auto; }
-  .ledger-table-head, .ledger-table-row { grid-template-columns: 60px 1fr 90px 85px 24px; min-width: 0; }
-  .ledger-table-head span:nth-child(3),
+  .ledger-table { padding-left: 12px; }
+  .ledger-table-head { display: none; }
+  .ledger-table-row {
+    display: grid;
+    grid-template-columns: auto 1fr auto auto;
+    grid-template-areas:
+      "date  .     status btn"
+      "type  type  type   type"
+      ".     .     .      amount";
+    row-gap: 6px;
+    column-gap: 10px;
+    align-items: center;
+    padding: 13px 10px;
+  }
+  .ledger-table-row > *:nth-child(1) { grid-area: date; }
+  .ledger-table-row > *:nth-child(2) { grid-area: type; }
   .ledger-table-row .route { display: none; }
-  .note-preview { max-width: 140px; }
+  .ledger-table-row > *:nth-child(4) { grid-area: status; justify-self: start; }
+  .ledger-table-row > *:nth-child(5) { grid-area: amount; justify-self: end; }
+  .ledger-table-row > *:nth-child(6) { grid-area: btn; justify-self: end; }
+  .note-preview { max-width: 100%; }
 
   .modal-card { padding: 22px 18px 18px; }
+  .detail-value.timestamp { font-size: 0.85rem; }
   .status-editor { flex-direction: column; align-items: stretch; }
   .status-editor select, .status-editor .btn-primary { width: 100%; }
 }
 
 @media (max-width: 400px) {
+  .stat-strip { gap: 6px; }
+  .stat-label { font-size: 0.62rem; }
+  .stat-value { font-size: 0.82rem; }
   .wordmark.small { font-size: 1.15rem; gap: 8px; }
   .hero-wordmark { font-size: 2.2rem; }
   .company-grid { grid-template-columns: 1fr 1fr; }
   .account-chip, .new-chip, .new-chip-form { width: 100%; min-width: 0; }
-  .ledger-table-head, .ledger-table-row { grid-template-columns: 50px 1fr 75px 70px 20px; gap: 8px; padding: 9px 6px; }
+  .ledger-table-row { column-gap: 8px; padding: 11px 8px; }
 }
 
 /* ==================== Modal (transfer detail) ==================== */
@@ -1023,6 +1096,12 @@ button, input, select { font-family: inherit; font-size: 1rem; }
   font-weight: 700;
 }
 .detail-value { font-size: 0.95rem; color: var(--text); }
+.detail-value.timestamp {
+  white-space: nowrap;
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
+  padding-bottom: 2px;
+}
 .detail-sub { font-size: 0.75rem; color: var(--text-faint); margin-top: 2px; }
 
 .status-editor {
@@ -1047,8 +1126,9 @@ button, input, select { font-family: inherit; font-size: 1rem; }
   display: flex;
   align-items: center;
   gap: 8px;
-  margin-left: 6px;
-  padding-left: 8px;
-  border-left: 1px solid var(--glass-border);
+  margin-top: 6px;
+  padding-top: 8px;
+  width: 100%;
+  border-top: 1px solid var(--glass-border);
 }
 .link-btn.small { font-size: 0.75rem; }

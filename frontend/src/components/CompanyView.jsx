@@ -221,9 +221,16 @@ export default function CompanyView({ token, user, company, onBack }) {
         <div className="member-row">
           {members.map((m) => (
             <div key={m.user_id} className="member-chip">
-              {m.is_admin && <IconCrown width={13} height={13} />}
-              <span className="member-name">{m.name}</span>
-              <span className="member-email mono dim">{m.email}</span>
+              <div className="member-avatar">
+                {m.name?.[0]?.toUpperCase() || '?'}
+                {m.is_admin && (
+                  <span className="member-crown" title="Admin">
+                    <IconCrown width={10} height={10} />
+                  </span>
+                )}
+              </div>
+              <span className="member-name" title={m.name}>{m.name}</span>
+              <span className="member-email mono dim" title={m.email}>{m.email}</span>
               {iAmAdmin && (
                 <div className="member-actions">
                   <button
@@ -384,10 +391,6 @@ export default function CompanyView({ token, user, company, onBack }) {
           <input placeholder="Note (optional)" value={notes} onChange={(e) => setNotes(e.target.value)} />
           <button className="btn-primary small" type="submit">Send</button>
         </form>
-        <p className="panel-hint">
-          Pick which account here should send the money. For the destination, type to search your
-          own accounts, or paste an account ID a teammate shared with you — it can be any account, in any company.
-        </p>
 
         {shownTransfers.length === 0 ? (
           <div className="empty-state">No transfers to show.</div>
