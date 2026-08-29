@@ -233,7 +233,7 @@ func ListCompanyMembers(c *gin.Context) {
 	}
 
 	rows, err := config.DB.Query(`
-		SELECT u.id, u.name, u.email, cm.is_admin, cm.created_at
+		SELECT u.id, u.name, u.email, u.profile_picture_url, cm.is_admin, cm.created_at
 		FROM company_members cm
 		JOIN users u ON u.id = cm.user_id
 		WHERE cm.company_id = $1
@@ -247,10 +247,12 @@ func ListCompanyMembers(c *gin.Context) {
 	members := []models.CompanyMember{}
 	for rows.Next() {
 		var m models.CompanyMember
-		if err := rows.Scan(&m.UserID, &m.Name, &m.Email, &m.IsAdmin, &m.CreatedAt); err != nil {
+		var picture sql.NullString
+		if err := rows.Scan(&m.UserID, &m.Name, &m.Email, &picture, &m.IsAdmin, &m.CreatedAt); err != nil {
 			utils.RespondDBError(c, err)
 			return
 		}
+		m.ProfilePictureURL = utils.NullStringToPtr(picture)
 		members = append(members, m)
 	}
 

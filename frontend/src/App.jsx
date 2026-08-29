@@ -14,6 +14,7 @@ export default function App() {
   const [company, setCompany] = useState(null)
   const [theme, setTheme] = useState(() => localStorage.getItem('lekha_theme') || 'dark')
   const [showProfile, setShowProfile] = useState(false)
+  const [avatarBroken, setAvatarBroken] = useState(false)
 
   useEffect(() => {
     document.documentElement.setAttribute('data-theme', theme)
@@ -27,6 +28,7 @@ export default function App() {
   function handleProfileUpdated(updatedUser) {
     localStorage.setItem('lekha_user', JSON.stringify(updatedUser))
     setUser(updatedUser)
+    setAvatarBroken(false)
   }
 
   function handleAuthed(newToken, newUser) {
@@ -61,8 +63,13 @@ export default function App() {
             {theme === 'dark' ? <IconSun /> : <IconMoon />}
           </button>
           <button className="user-name-btn" onClick={() => setShowProfile(true)} title="Edit your profile">
-            {user.profile_picture_url ? (
-              <img src={user.profile_picture_url} alt={user.name} className="user-avatar-sm" />
+            {user.profile_picture_url && !avatarBroken ? (
+              <img
+                src={user.profile_picture_url}
+                alt={user.name}
+                className="user-avatar-sm"
+                onError={() => setAvatarBroken(true)}
+              />
             ) : (
               <span className="user-avatar-sm user-avatar-fallback">{user.name?.[0]?.toUpperCase() || '?'}</span>
             )}

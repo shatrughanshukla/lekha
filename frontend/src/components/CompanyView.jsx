@@ -221,14 +221,7 @@ export default function CompanyView({ token, user, company, onBack }) {
         <div className="member-row">
           {members.map((m) => (
             <div key={m.user_id} className="member-chip">
-              <div className="member-avatar">
-                {m.name?.[0]?.toUpperCase() || '?'}
-                {m.is_admin && (
-                  <span className="member-crown" title="Admin">
-                    <IconCrown width={10} height={10} />
-                  </span>
-                )}
-              </div>
+              <MemberAvatar member={m} />
               <span className="member-name" title={m.name}>{m.name}</span>
               <span className="member-email mono dim" title={m.email}>{m.email}</span>
               {iAmAdmin && (
@@ -458,6 +451,34 @@ export default function CompanyView({ token, user, company, onBack }) {
           onClose={() => setDetailTransferId(null)}
           onChanged={refresh}
         />
+      )}
+    </div>
+  )
+}
+
+// Shows the member's photo if one is set and actually loads; falls back to
+// their initial letter otherwise — including if the URL 404s or the image
+// fails to load for any reason, rather than showing a broken-image icon.
+function MemberAvatar({ member }) {
+  const [broken, setBroken] = useState(false)
+  const showImage = member.profile_picture_url && !broken
+
+  return (
+    <div className="member-avatar">
+      {showImage ? (
+        <img
+          src={member.profile_picture_url}
+          alt={member.name}
+          className="member-avatar-img"
+          onError={() => setBroken(true)}
+        />
+      ) : (
+        member.name?.[0]?.toUpperCase() || '?'
+      )}
+      {member.is_admin && (
+        <span className="member-crown" title="Admin">
+          <IconCrown width={10} height={10} />
+        </span>
       )}
     </div>
   )

@@ -6,11 +6,12 @@ import "time"
 // name/email so a client doesn't have to make a second call to display who
 // has access to a company.
 type CompanyMember struct {
-	UserID    string    `json:"user_id"`
-	Name      string    `json:"name"`
-	Email     string    `json:"email"`
-	IsAdmin   bool      `json:"is_admin"`
-	CreatedAt time.Time `json:"member_since"`
+	UserID            string    `json:"user_id"`
+	Name              string    `json:"name"`
+	Email             string    `json:"email"`
+	ProfilePictureURL *string   `json:"profile_picture_url"`
+	IsAdmin           bool      `json:"is_admin"`
+	CreatedAt         time.Time `json:"member_since"`
 }
 
 // AddMemberInput is the payload accepted by POST /companies/:id/members.
