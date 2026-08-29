@@ -73,9 +73,33 @@
   --select-option-text: #14152e;
   --grid-line: rgba(20, 20, 45, 0.06);
   --aurora-opacity: 0.55;
-  --topbar-bg: rgba(255, 255, 255, 0.65);
+  --topbar-bg: rgba(120, 88, 96, 0.62);
 
   color-scheme: light;
+}
+
+/* The top bar in light mode is tinted brownish-purple rather than the
+   default off-white glass, so its own text/icons need to flip to a light
+   ink to stay readable — scoped to .top-bar only so it doesn't affect
+   .user-name / .btn-ghost / .theme-toggle used elsewhere in the app. */
+[data-theme='light'] .top-bar .user-name,
+[data-theme='light'] .top-bar .theme-toggle,
+[data-theme='light'] .top-bar .btn-ghost {
+  color: #f7f1f3;
+}
+[data-theme='light'] .top-bar .theme-toggle,
+[data-theme='light'] .top-bar .btn-ghost {
+  background: rgba(255, 255, 255, 0.14);
+  border-color: rgba(255, 255, 255, 0.28);
+}
+[data-theme='light'] .top-bar .user-name-btn:hover { background: rgba(255, 255, 255, 0.14); }
+[data-theme='light'] .top-bar .user-name-btn:hover .user-name { color: #ffffff; }
+[data-theme='light'] .top-bar .theme-toggle:hover,
+[data-theme='light'] .top-bar .btn-ghost:hover {
+  color: #ffffff;
+  border-color: rgba(255, 255, 255, 0.5);
+  background: rgba(255, 255, 255, 0.22);
+  box-shadow: none;
 }
 
 @media (prefers-reduced-motion: reduce) {
