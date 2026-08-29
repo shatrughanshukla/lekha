@@ -30,6 +30,8 @@ func RegisterRoutes(r *gin.Engine) {
 		users.GET("/:id", handlers.GetUserByID)
 		users.PUT("/:id", handlers.UpdateUser)
 		users.DELETE("/:id", handlers.DeleteUser)
+		users.POST("/:id/profile-picture", handlers.UploadProfilePicture)
+		users.DELETE("/:id/profile-picture", handlers.RemoveProfilePicture)
 	}
 
 	companies := protected.Group("/companies")

@@ -483,7 +483,8 @@ button, input, select { font-family: inherit; font-size: 1rem; }
   font-size: 0.78rem;
 }
 
-.profile-avatar-row { display: flex; justify-content: center; margin-bottom: 20px; }
+.profile-avatar-row { display: flex; flex-direction: column; align-items: center; gap: 12px; margin-bottom: 20px; }
+.profile-avatar-wrap { position: relative; width: 84px; height: 84px; }
 .profile-avatar-lg {
   width: 84px;
   height: 84px;
@@ -501,6 +502,47 @@ button, input, select { font-family: inherit; font-size: 1rem; }
   font-weight: 700;
   font-size: 2rem;
 }
+.profile-avatar-edit-btn {
+  position: absolute;
+  bottom: -2px;
+  right: -2px;
+  width: 30px;
+  height: 30px;
+  border-radius: 50%;
+  background: var(--grad-signature);
+  border: 2px solid var(--void-2);
+  color: #f5f6ff;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  transition: transform 0.15s;
+}
+.profile-avatar-edit-btn:hover { transform: scale(1.08); }
+.profile-avatar-edit-btn:disabled { opacity: 0.6; cursor: not-allowed; transform: none; }
+.profile-avatar-spinner {
+  position: absolute;
+  inset: 0;
+  border-radius: 50%;
+  background: rgba(5, 5, 16, 0.55);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+.profile-avatar-spinner::after {
+  content: '';
+  width: 22px;
+  height: 22px;
+  border-radius: 50%;
+  border: 2.5px solid rgba(245, 246, 255, 0.3);
+  border-top-color: #f5f6ff;
+  animation: spin 0.7s linear infinite;
+}
+@keyframes spin { to { transform: rotate(360deg); } }
+.profile-avatar-actions { display: flex; align-items: center; gap: 14px; }
+.link-btn.danger { color: var(--danger); }
+.link-btn.danger:hover { color: var(--danger); text-shadow: 0 0 10px rgba(255, 77, 109, 0.5); }
+.link-btn:disabled { opacity: 0.5; cursor: not-allowed; }
 
 .profile-form { display: flex; flex-direction: column; gap: 16px; }
 .profile-form label {

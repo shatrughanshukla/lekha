@@ -30,6 +30,23 @@ export const api = {
   getUser: (token, id) => request(`/users/${id}`, { token }),
   updateUser: (token, id, updates) => request(`/users/${id}`, { method: 'PUT', token, body: updates }),
 
+  // Multipart upload — bypasses the JSON `request` helper above since this
+  // needs a FormData body and must NOT set a JSON Content-Type header (the
+  // browser sets its own multipart boundary automatically).
+  uploadProfilePicture: async (token, id, file) => {
+    const formData = new FormData()
+    formData.append('photo', file)
+    const res = await fetch(`${BASE_URL}/users/${id}/profile-picture`, {
+      method: 'POST',
+      headers: { Authorization: `Bearer ${token}` },
+      body: formData,
+    })
+    const data = await res.json().catch(() => ({}))
+    if (!res.ok) throw new Error(data.error || `Upload failed (${res.status})`)
+    return data
+  },
+  removeProfilePicture: (token, id) => request(`/users/${id}/profile-picture`, { method: 'DELETE', token }),
+
   listCompanies: (token) => request('/companies', { token }),
   createCompany: (token, companyName, userId) =>
     request('/companies', { method: 'POST', token, body: { company_name: companyName, created_by: userId } }),
