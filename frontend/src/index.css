@@ -987,15 +987,14 @@ button, input, select { font-family: inherit; font-size: 1rem; }
   .ledger-table-head { display: none; }
   .ledger-table-row {
     display: grid;
-    grid-template-columns: auto 1fr auto auto;
+    grid-template-columns: auto 1fr auto;
     grid-template-areas:
-      "date  .     status btn"
-      "type  type  type   type"
-      ".     .     .      amount";
-    row-gap: 6px;
+      "date   status btn"
+      "type   type   amount";
+    row-gap: 4px;
     column-gap: 10px;
     align-items: center;
-    padding: 13px 10px;
+    padding: 12px 10px;
   }
   .ledger-table-row > *:nth-child(1) { grid-area: date; }
   .ledger-table-row > *:nth-child(2) { grid-area: type; }
