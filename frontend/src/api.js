@@ -1,5 +1,4 @@
-const BASE_URL = 'http://localhost:8080/api/v1'
-
+const BASE_URL = 'https://lekha-n0jx.onrender.com/api/v1'
 // Every call goes through here so the auth header and error handling are
 // consistent in one place, instead of repeated at every call site.
 async function request(path, { method = 'GET', body, token } = {}) {
