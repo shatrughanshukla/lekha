@@ -12,3 +12,14 @@ func NullStringToPtr(ns sql.NullString) *string {
 	}
 	return &ns.String
 }
+
+// NullStringOrEmpty converts a nullable SQL string column into a plain Go
+// string — "" when the column was NULL. Used for display-only joined
+// fields (like a proposer's name) where the caller only cares about the
+// value, not distinguishing "not set" from "empty".
+func NullStringOrEmpty(ns sql.NullString) string {
+	if !ns.Valid {
+		return ""
+	}
+	return ns.String
+}

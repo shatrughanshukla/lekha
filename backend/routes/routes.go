@@ -68,7 +68,8 @@ func RegisterRoutes(r *gin.Engine) {
 		transfers.POST("", handlers.CreateTransfer)
 		transfers.GET("", handlers.GetTransfers) // supports ?company_id= ?account_id= ?status=
 		transfers.GET("/:id", handlers.GetTransferByID)
-		transfers.PATCH("/:id/status", handlers.UpdateTransferStatus)
-		transfers.POST("/search", handlers.SearchTransfers) // natural language search (AI layer)
+		transfers.PATCH("/:id/propose", handlers.ProposeTransferStatus)  // propose reversing a COMPLETED transfer
+		transfers.PATCH("/:id/approval", handlers.RespondToTransfer)     // approve/reject whatever is awaiting a decision
+		transfers.POST("/search", handlers.SearchTransfers)              // natural language search (AI layer)
 	}
 }

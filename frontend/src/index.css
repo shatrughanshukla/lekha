@@ -1219,8 +1219,7 @@ button, input, select { font-family: inherit; font-size: 1rem; }
 
   .modal-card { padding: 22px 18px 18px; }
   .detail-value.timestamp { font-size: 0.85rem; }
-  .status-editor { flex-direction: column; align-items: stretch; }
-  .status-editor select, .status-editor .btn-primary { width: 100%; }
+  .approval-actions { flex-direction: column; align-items: stretch; }
 }
 
 @media (max-width: 400px) {
@@ -1316,20 +1315,28 @@ button, input, select { font-family: inherit; font-size: 1rem; }
 }
 .detail-sub { font-size: 0.75rem; color: var(--text-faint); margin-top: 2px; }
 
-.status-editor {
+.approval-banner {
   display: flex;
-  align-items: center;
+  flex-direction: column;
   gap: 10px;
-  flex-wrap: wrap;
-}
-.status-editor select {
+  margin-top: 4px;
+  padding: 14px;
   background: var(--glass-hi);
   border: 1px solid var(--glass-border);
-  border-radius: 8px;
-  padding: 7px 11px;
-  color: var(--text);
+  border-radius: var(--radius-sm);
 }
-.status-editor select option { background: var(--select-option-bg); color: var(--select-option-text); }
+.approval-banner .panel-hint { margin: 0; }
+.approval-actions { display: flex; gap: 10px; }
+
+.pending-proposal-hint {
+  display: block;
+  margin-top: 4px;
+  font-size: 0.68rem;
+  font-weight: 700;
+  letter-spacing: 0.03em;
+  color: var(--violet-2);
+  text-transform: uppercase;
+}
 
 /* ==================== Member admin controls ==================== */
 

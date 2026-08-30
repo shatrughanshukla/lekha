@@ -1,31 +1,44 @@
 import { useState, useEffect } from 'react'
-import { api, TRANSFER_STATUSES, STATUS_COLORS } from '../api.js'
+import { api, STATUS_COLORS } from '../api.js'
 import { Modal, Money, StampBadge, ErrorNote } from './Shared.jsx'
 
-export default function TransferDetail({ token, user, transferId, onClose, onChanged }) {
+export default function TransferDetail({ token, user, company, transferId, onClose, onChanged }) {
   const [t, setT] = useState(null)
   const [error, setError] = useState('')
-  const [newStatus, setNewStatus] = useState('')
-  const [saving, setSaving] = useState(false)
+  const [acting, setActing] = useState(false)
 
   useEffect(() => {
     api.getTransfer(token, transferId)
-      .then((data) => { setT(data); setNewStatus(data.status) })
+      .then(setT)
       .catch((err) => setError(err.message))
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [transferId])
 
-  async function saveStatus() {
-    setSaving(true)
+  async function respond(approve) {
+    setActing(true)
     setError('')
     try {
-      const updated = await api.updateTransferStatus(token, transferId, newStatus, user.id)
-      setT((prev) => ({ ...prev, status: updated.status, updated_at: updated.updated_at }))
+      const updated = await api.respondToTransfer(token, transferId, approve, user.id)
+      setT((prev) => ({ ...prev, ...updated }))
       onChanged?.()
     } catch (err) {
       setError(err.message)
     } finally {
-      setSaving(false)
+      setActing(false)
+    }
+  }
+
+  async function proposeReversal() {
+    setActing(true)
+    setError('')
+    try {
+      const updated = await api.proposeTransferReversal(token, transferId, user.id)
+      setT((prev) => ({ ...prev, ...updated }))
+      onChanged?.()
+    } catch (err) {
+      setError(err.message)
+    } finally {
+      setActing(false)
     }
   }
 
@@ -78,23 +91,86 @@ export default function TransferDetail({ token, user, transferId, onClose, onCha
           <div className="detail-row">
             <span className="detail-label">Status</span>
             <span className="detail-value">
-              <div className="status-editor">
-                <StampBadge status={t.status} color={STATUS_COLORS[t.status]} />
-                <select value={newStatus} onChange={(e) => setNewStatus(e.target.value)}>
-                  {TRANSFER_STATUSES.map((s) => <option key={s}>{s}</option>)}
-                </select>
-                <button
-                  className="btn-primary small"
-                  disabled={saving || newStatus === t.status}
-                  onClick={saveStatus}
-                >
-                  {saving ? '…' : 'Save'}
-                </button>
-              </div>
+              <StampBadge status={t.status} color={STATUS_COLORS[t.status]} />
             </span>
           </div>
+
+          <ApprovalArea t={t} company={company} acting={acting} onRespond={respond} onPropose={proposeReversal} />
         </div>
       )}
     </Modal>
   )
+}
+
+// Shows whatever action (if any) the CURRENT company can take on this
+// transfer right now — approving/rejecting a brand-new request, waiting on
+// the other side, proposing a reversal, or nothing at all once a transfer
+// has reached a terminal state (CANCELLED/REVERSED).
+function ApprovalArea({ t, company, acting, onRespond, onPropose }) {
+  const isSenderSide = company.id === t.company_id
+
+  if (t.status === 'PENDING') {
+    if (isSenderSide) {
+      return (
+        <div className="approval-banner">
+          <p className="panel-hint">Waiting for the receiving company to approve this transfer. No money has moved yet.</p>
+          <button className="btn-ghost small" disabled={acting} onClick={() => onRespond(false)}>
+            {acting ? '…' : 'Cancel request'}
+          </button>
+        </div>
+      )
+    }
+    return (
+      <div className="approval-banner">
+        <p className="panel-hint">This transfer needs your approval before any money moves.</p>
+        <div className="approval-actions">
+          <button className="btn-primary small" disabled={acting} onClick={() => onRespond(true)}>
+            {acting ? '…' : 'Approve'}
+          </button>
+          <button className="btn-ghost small" disabled={acting} onClick={() => onRespond(false)}>
+            Reject
+          </button>
+        </div>
+      </div>
+    )
+  }
+
+  if (t.status === 'COMPLETED' && t.pending_status) {
+    const iProposed = t.proposed_by_company_id === company.id
+    if (iProposed) {
+      return (
+        <div className="approval-banner">
+          <p className="panel-hint">
+            {t.proposed_by_name ? `${t.proposed_by_name} proposed` : 'You proposed'} reversing this transfer.
+            Waiting for the other company to respond — the money hasn't moved.
+          </p>
+        </div>
+      )
+    }
+    return (
+      <div className="approval-banner">
+        <p className="panel-hint">The other company wants to reverse this transfer.</p>
+        <div className="approval-actions">
+          <button className="btn-primary small" disabled={acting} onClick={() => onRespond(true)}>
+            {acting ? '…' : 'Approve reversal'}
+          </button>
+          <button className="btn-ghost small" disabled={acting} onClick={() => onRespond(false)}>
+            Reject
+          </button>
+        </div>
+      </div>
+    )
+  }
+
+  if (t.status === 'COMPLETED') {
+    return (
+      <div className="approval-banner">
+        <button className="link-btn small danger" disabled={acting} onClick={onPropose}>
+          {acting ? '…' : 'Propose reversing this transfer'}
+        </button>
+      </div>
+    )
+  }
+
+  return null
 }

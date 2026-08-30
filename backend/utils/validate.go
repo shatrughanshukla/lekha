@@ -15,13 +15,13 @@ func IsValidUUID(s string) bool {
 }
 
 // validTransferStatuses mirrors transfer_status_enum in Postgres exactly.
+// PROCESSING and FAILED were removed when the two-party approval workflow
+// replaced free-form status editing — see transfer_handler.go.
 var validTransferStatuses = map[string]bool{
-	"PENDING":    true,
-	"PROCESSING": true,
-	"COMPLETED":  true,
-	"FAILED":     true,
-	"CANCELLED":  true,
-	"REVERSED":   true,
+	"PENDING":   true,
+	"COMPLETED": true,
+	"CANCELLED": true,
+	"REVERSED":  true,
 }
 
 // IsValidTransferStatus reports whether s is one of the real enum values.

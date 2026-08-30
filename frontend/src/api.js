@@ -85,8 +85,15 @@ export const api = {
   searchTransfers: (token, companyId, query) =>
     request('/transfers/search', { method: 'POST', token, body: { company_id: companyId, query } }),
   getTransfer: (token, id) => request(`/transfers/${id}`, { token }),
-  updateTransferStatus: (token, id, status, userId) =>
-    request(`/transfers/${id}/status`, { method: 'PATCH', token, body: { status, updated_by_user: userId } }),
+  // Only ever proposes reversing an already-COMPLETED transfer — it does
+  // not apply anything by itself unless the requester controls both
+  // companies involved (see transfer_handler.go).
+  proposeTransferReversal: (token, id, userId) =>
+    request(`/transfers/${id}/propose`, { method: 'PATCH', token, body: { status: 'REVERSED', updated_by_user: userId } }),
+  // Answers whatever is currently awaiting a decision on this transfer —
+  // a brand-new PENDING transfer, or a pending reversal proposal.
+  respondToTransfer: (token, id, approve, userId) =>
+    request(`/transfers/${id}/approval`, { method: 'PATCH', token, body: { approve, updated_by_user: userId } }),
 
   getSummary: (token, companyId) => request(`/companies/${companyId}/transfers/summary`, { token }),
   getInsights: (token, companyId) => request(`/companies/${companyId}/insights`, { token }),
@@ -101,7 +108,7 @@ export const api = {
     request(`/companies/${companyId}/members/${userId}`, { method: 'PATCH', token, body: { is_admin: isAdmin } }),
 }
 
-export const TRANSFER_STATUSES = ['PENDING', 'PROCESSING', 'COMPLETED', 'FAILED', 'CANCELLED', 'REVERSED']
+export const TRANSFER_STATUSES = ['PENDING', 'COMPLETED', 'CANCELLED', 'REVERSED']
 
 export const ACCOUNT_TYPES = ['BANK', 'CASH']
 export const TRANSFER_TYPES = [
@@ -112,9 +119,7 @@ export const TRANSFER_TYPES = [
 ]
 export const STATUS_COLORS = {
   PENDING: '#ffb84d',
-  PROCESSING: '#2dd4ff',
   COMPLETED: '#2af0c0',
-  FAILED: '#ff4d6d',
   CANCELLED: '#8d92c2',
   REVERSED: '#c084fc',
 }

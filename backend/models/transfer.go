@@ -21,6 +21,17 @@ type Transfer struct {
 	CreatedAt       time.Time `json:"created_at"`
 	UpdatedAt       time.Time `json:"updated_at"`
 
+	// Two-party approval workflow. A transfer's displayed Status only ever
+	// changes as the result of BOTH sides agreeing — see transfer_handler.go
+	// for the full state machine. PendingStatus is non-nil exactly when one
+	// side has proposed changing an already-COMPLETED transfer (currently
+	// only to REVERSED) and the other side hasn't responded yet; the
+	// balances have NOT moved for that proposal until it's approved.
+	PendingStatus       *string `json:"pending_status"`
+	ProposedByCompanyID *string `json:"proposed_by_company_id"`
+	ProposedByUserID    *string `json:"proposed_by_user_id"`
+	ProposedByName      string  `json:"proposed_by_name,omitempty"`
+
 	FromCompanyName string `json:"from_company_name,omitempty"`
 	ToCompanyName   string `json:"to_company_name,omitempty"`
 	FromAccountType string `json:"from_account_type,omitempty"`
@@ -42,9 +53,19 @@ type CreateTransferInput struct {
 	CreatedByUser string  `json:"created_by_user" binding:"required,uuid"`
 }
 
-// UpdateTransferStatusInput is the payload accepted by PATCH /transfers/:id/status.
-// Status is the only field that should change after a transfer is created.
-type UpdateTransferStatusInput struct {
-	Status        string `json:"status" binding:"required,oneof=PENDING PROCESSING COMPLETED FAILED CANCELLED REVERSED"`
+// ProposeStatusInput is the payload accepted by PATCH /transfers/:id/propose.
+// Only usable on an already-COMPLETED transfer with no proposal already in
+// flight — it starts a proposal, it never applies anything by itself.
+type ProposeStatusInput struct {
+	Status        string `json:"status" binding:"required,oneof=REVERSED"`
+	UpdatedByUser string `json:"updated_by_user" binding:"required,uuid"`
+}
+
+// ApprovalInput is the payload accepted by PATCH /transfers/:id/approval —
+// the one place a transfer's status (and the money) actually moves.
+// It answers whatever is currently awaiting a decision on this transfer:
+// a brand-new PENDING transfer, or a pending REVERSED proposal.
+type ApprovalInput struct {
+	Approve       bool   `json:"approve"`
 	UpdatedByUser string `json:"updated_by_user" binding:"required,uuid"`
 }

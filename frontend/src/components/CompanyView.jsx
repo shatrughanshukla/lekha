@@ -427,7 +427,10 @@ export default function CompanyView({ token, user, company, onBack }) {
                     <IconArrowRight width={13} height={13} />
                     <span className="route-part" title={toLabel}>{toLabel}</span>
                   </span>
-                  <StampBadge status={t.status} color={STATUS_COLORS[t.status]} />
+                  <span>
+                    <StampBadge status={t.status} color={STATUS_COLORS[t.status]} />
+                    {t.pending_status && <span className="pending-proposal-hint" title="A reversal has been proposed and is awaiting the other company's decision">↺ proposed</span>}
+                  </span>
                   <span className="align-right"><Money value={t.amount} /></span>
                   <button
                     className="info-btn"
@@ -447,6 +450,7 @@ export default function CompanyView({ token, user, company, onBack }) {
         <TransferDetail
           token={token}
           user={user}
+          company={company}
           transferId={detailTransferId}
           onClose={() => setDetailTransferId(null)}
           onChanged={refresh}

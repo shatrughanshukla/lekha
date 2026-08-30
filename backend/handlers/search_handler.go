@@ -25,7 +25,7 @@ const searchSystemPrompt = `You convert a plain-English question about bank tran
 {"status": "", "transfer_type": "", "min_amount": 0, "max_amount": 0, "date_from": "", "date_to": ""}
 
 Rules:
-- "status" must be exactly one of: PENDING, PROCESSING, COMPLETED, FAILED, CANCELLED, REVERSED — or "" if not mentioned.
+- "status" must be exactly one of: PENDING, COMPLETED, CANCELLED, REVERSED — or "" if not mentioned.
 - "transfer_type" must be exactly one of: "CASH DEPOSIT IN BANK", "CASH WITHDRAWAL FROM BANK", "BANK TO BANK TRANSFER", "CASH ACCOUNT TRANSFER" — or "" if not mentioned.
 - "min_amount" / "max_amount" are plain numbers, 0 if not mentioned.
 - "date_from" / "date_to" are ISO dates (YYYY-MM-DD), "" if not mentioned. You do not know today's date — only use dates the user explicitly states; never guess a relative range like "last month".
