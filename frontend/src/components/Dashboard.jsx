@@ -1,21 +1,26 @@
 import { useState, useEffect, useMemo } from 'react'
 import { api } from '../api.js'
 import { ErrorNote, DeleteButton, IconSearch, IconPlus, IconBuilding, IconSparkle } from './Shared.jsx'
+import { getCached, setCached } from '../cache.js'
 
 export default function Dashboard({ token, user, onOpenCompany }) {
-  const [companies, setCompanies] = useState([])
+  const [companies, setCompanies] = useState(() => getCached('companies') ?? [])
   const [filter, setFilter] = useState('')
   const [creating, setCreating] = useState(false)
   const [newName, setNewName] = useState('')
   const [error, setError] = useState('')
-  const [loading, setLoading] = useState(true)
+  const [loading, setLoading] = useState(() => !getCached('companies'))
   const [insights, setInsights] = useState(null)
   const [insightsLoading, setInsightsLoading] = useState(false)
 
   async function refresh() {
-    setLoading(true)
+    // Only show the loading state when we have nothing to show yet — if
+    // cached data is already on screen, refresh silently in the background.
+    if (!getCached('companies')) setLoading(true)
     try {
-      setCompanies(await api.listCompanies(token))
+      const data = await api.listCompanies(token)
+      setCompanies(data)
+      setCached('companies', data)
     } catch (err) {
       setError(err.message)
     } finally {
@@ -92,7 +97,10 @@ export default function Dashboard({ token, user, onOpenCompany }) {
           </button>
         </div>
         {insights ? (
-          <p className="insight-text">{insights.insight}</p>
+          <p className="insight-text">
+            {insights.insight}
+            {insights.cached && <span className="cached-hint" title="Nothing has changed since the last time this was generated, so this is reused rather than a fresh AI call">⚡ cached</span>}
+          </p>
         ) : (
           <p className="panel-hint">AI-written summary across every company you belong to — total activity, which companies are busiest, and which have none yet.</p>
         )}

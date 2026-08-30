@@ -1,17 +1,18 @@
 import { useState, useEffect, useMemo } from 'react'
 import { api, ACCOUNT_TYPES, STATUS_COLORS } from '../api.js'
 import {
-  Money, StampBadge, ErrorNote, DeleteButton,
+  Money, StampBadge, ErrorNote, DeleteButton, CopyableID,
   IconBank, IconCash, IconPlus, IconSparkle, IconSearch, IconArrowRight,
   IconPeople, IconInfo, IconCrown,
 } from './Shared.jsx'
 import TransferDetail from './TransferDetail.jsx'
+import { getCached, setCached } from '../cache.js'
 
 export default function CompanyView({ token, user, company, onBack }) {
-  const [accounts, setAccounts] = useState([])
-  const [myAccounts, setMyAccounts] = useState([]) // across ALL companies user belongs to
-  const [transfers, setTransfers] = useState([])
-  const [members, setMembers] = useState([])
+  const [accounts, setAccounts] = useState(() => getCached(`company:${company.id}:accounts`) ?? [])
+  const [myAccounts, setMyAccounts] = useState(() => getCached('my-accounts') ?? []) // across ALL companies user belongs to
+  const [transfers, setTransfers] = useState(() => getCached(`company:${company.id}:transfers`) ?? [])
+  const [members, setMembers] = useState(() => getCached(`company:${company.id}:members`) ?? [])
   const [error, setError] = useState('')
 
   const [invitingMember, setInvitingMember] = useState(false)
@@ -34,6 +35,9 @@ export default function CompanyView({ token, user, company, onBack }) {
   const [insights, setInsights] = useState(null)
   const [insightsLoading, setInsightsLoading] = useState(false)
 
+  // Stale-while-revalidate: renders whatever's cached (if anything)
+  // instantly, then this quietly fetches the real thing and updates both
+  // the on-screen state and the cache for next time.
   async function refresh() {
     try {
       const [a, t, m, mine] = await Promise.all([
@@ -46,6 +50,10 @@ export default function CompanyView({ token, user, company, onBack }) {
       setTransfers(t)
       setMembers(m)
       setMyAccounts(mine)
+      setCached(`company:${company.id}:accounts`, a)
+      setCached(`company:${company.id}:transfers`, t)
+      setCached(`company:${company.id}:members`, m)
+      setCached('my-accounts', mine)
     } catch (err) {
       setError(err.message)
     }
@@ -287,7 +295,10 @@ export default function CompanyView({ token, user, company, onBack }) {
             </button>
           </div>
           {insights ? (
-            <p className="insight-text">{insights.insight}</p>
+            <p className="insight-text">
+              {insights.insight}
+              {insights.cached && <span className="cached-hint" title="Nothing has changed since the last time this was generated, so this is reused rather than a fresh AI call">⚡ cached</span>}
+            </p>
           ) : (
             <p className="panel-hint">AI-written summary of this company's transfer activity, from real computed numbers.</p>
           )}
@@ -328,14 +339,7 @@ export default function CompanyView({ token, user, company, onBack }) {
               </div>
               <div className="account-chip-type">{a.account_type}</div>
               <div className="account-chip-balance"><Money value={a.current_balance} /></div>
-              <button
-                type="button"
-                className="account-chip-id mono"
-                title="Click to copy account ID"
-                onClick={() => navigator.clipboard.writeText(a.id)}
-              >
-                {a.id.slice(0, 8)}… ⧉
-              </button>
+              <CopyableID id={a.id} className="account-chip-id" />
               <div className={a.is_active ? 'pill pill-active' : 'pill pill-inactive'}>
                 {a.is_active ? 'active' : 'inactive'}
               </div>

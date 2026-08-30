@@ -16,9 +16,12 @@ type TransferSummary struct {
 // CompanyInsightsResponse wraps the numeric summary together with the
 // AI-generated plain-English paragraph describing it, so a client can show
 // both — the numbers a user can verify, and the sentence that explains them.
+// Cached is true when the paragraph was reused from a prior identical
+// summary rather than freshly generated — see utils/insight_cache.go.
 type CompanyInsightsResponse struct {
 	Summary TransferSummary `json:"summary"`
 	Insight string          `json:"insight"`
+	Cached  bool            `json:"cached"`
 }
 
 // CompanyActivity is one company's transfer activity as seen from the
@@ -45,7 +48,10 @@ type OverviewSummary struct {
 
 // OverviewInsightsResponse wraps the numeric cross-company overview
 // together with the AI-generated plain-English paragraph describing it.
+// Cached is true when the paragraph was reused from a prior identical
+// summary rather than freshly generated — see utils/insight_cache.go.
 type OverviewInsightsResponse struct {
 	Summary OverviewSummary `json:"summary"`
 	Insight string          `json:"insight"`
+	Cached  bool            `json:"cached"`
 }

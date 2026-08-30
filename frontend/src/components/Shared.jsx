@@ -56,6 +56,9 @@ export const IconCrown = (p) => (
 export const IconClose = (p) => (
   <svg {...iconProps} {...p}><path d="M6 6l12 12M18 6L6 18" /></svg>
 )
+export const IconCheck = (p) => (
+  <svg {...iconProps} {...p}><path d="M4 12l5 5L20 6" /></svg>
+)
 export const IconCamera = (p) => (
   <svg {...iconProps} {...p}>
     <path d="M4 8h3l1.5-2.5h7L17 8h3a1 1 0 011 1v10a1 1 0 01-1 1H4a1 1 0 01-1-1V9a1 1 0 011-1z" />
@@ -138,6 +141,39 @@ export function DeleteButton({ onConfirm, label = 'Delete' }) {
       }}
     >
       <IconTrash />
+    </button>
+  )
+}
+
+// ---------------------------------------------------------------------------
+// A button that copies a full ID to the clipboard, showing a checkmark and
+// "Copied" in place of the truncated ID for a moment so the click actually
+// feels like it did something — plain navigator.clipboard.writeText() gives
+// no feedback at all otherwise.
+// ---------------------------------------------------------------------------
+
+export function CopyableID({ id, className = '', chars = 8 }) {
+  const [copied, setCopied] = useState(false)
+
+  async function handleCopy(e) {
+    e.stopPropagation()
+    try {
+      await navigator.clipboard.writeText(id)
+      setCopied(true)
+      setTimeout(() => setCopied(false), 1500)
+    } catch {
+      // Clipboard access can fail (permissions, insecure context, etc.) —
+      // fail quietly rather than showing a false "Copied".
+    }
+  }
+
+  return (
+    <button type="button" className={`copyable-id mono ${className}`} title="Click to copy ID" onClick={handleCopy}>
+      {copied ? (
+        <span className="copyable-id-copied"><IconCheck width={12} height={12} /> Copied</span>
+      ) : (
+        <>{id.slice(0, chars)}… ⧉</>
+      )}
     </button>
   )
 }

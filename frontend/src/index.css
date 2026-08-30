@@ -850,6 +850,17 @@ button, input, select { font-family: inherit; font-size: 1rem; }
 
 .interpreted { font-size: 0.78rem; color: var(--text-dim); font-family: var(--mono); margin-top: 10px; }
 
+.cached-hint {
+  display: inline-block;
+  margin-left: 8px;
+  font-size: 0.68rem;
+  font-weight: 700;
+  letter-spacing: 0.03em;
+  color: var(--amber);
+  text-transform: uppercase;
+  vertical-align: middle;
+}
+
 /* ==================== Forms ==================== */
 
 .inline-form { display: flex; gap: 10px; margin-bottom: 12px; flex-wrap: wrap; align-items: center; }
@@ -1004,6 +1015,14 @@ button, input, select { font-family: inherit; font-size: 1rem; }
   text-align: left;
 }
 .account-chip-id:hover { color: var(--cyan); }
+
+.copyable-id-copied {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  color: var(--mint);
+  font-weight: 700;
+}
 
 .new-chip {
   align-items: center;

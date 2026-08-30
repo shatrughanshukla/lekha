@@ -187,17 +187,28 @@ func GetOverviewInsights(c *gin.Context) {
 		return
 	}
 
+	cacheKey := "overview:" + userID
+	summaryHash := utils.HashSummary(summaryJSON)
+
+	if cached, ok := utils.GetCachedInsight(cacheKey, summaryHash); ok {
+		c.JSON(http.StatusOK, models.OverviewInsightsResponse{Summary: summary, Insight: cached, Cached: true})
+		return
+	}
+
 	insight, err := utils.CallGemini(overviewSystemPrompt, string(summaryJSON))
 	if err != nil {
 		// The numeric summary is still fully correct and useful even if the
 		// AI paragraph fails — degrade gracefully instead of failing the
-		// whole request just because the AI layer had a hiccup.
+		// whole request just because the AI layer had a hiccup. Deliberately
+		// NOT cached, so the next request tries Gemini again instead of
+		// getting stuck repeating a failure message.
 		c.JSON(http.StatusOK, models.OverviewInsightsResponse{
 			Summary: summary,
 			Insight: "AI summary unavailable right now: " + err.Error(),
 		})
 		return
 	}
+	utils.SetCachedInsight(cacheKey, summaryHash, insight)
 
 	c.JSON(http.StatusOK, models.OverviewInsightsResponse{
 		Summary: summary,
@@ -243,17 +254,28 @@ func GetCompanyInsights(c *gin.Context) {
 		return
 	}
 
+	cacheKey := "company:" + companyID
+	summaryHash := utils.HashSummary(summaryJSON)
+
+	if cached, ok := utils.GetCachedInsight(cacheKey, summaryHash); ok {
+		c.JSON(http.StatusOK, models.CompanyInsightsResponse{Summary: summary, Insight: cached, Cached: true})
+		return
+	}
+
 	insight, err := utils.CallGemini(insightsSystemPrompt, string(summaryJSON))
 	if err != nil {
 		// The numeric summary is still fully correct and useful even if the
 		// AI paragraph fails — degrade gracefully instead of failing the
-		// whole request just because the AI layer had a hiccup.
+		// whole request just because the AI layer had a hiccup. Deliberately
+		// NOT cached, so the next request tries Gemini again instead of
+		// getting stuck repeating a failure message.
 		c.JSON(http.StatusOK, models.CompanyInsightsResponse{
 			Summary: summary,
 			Insight: "AI summary unavailable right now: " + err.Error(),
 		})
 		return
 	}
+	utils.SetCachedInsight(cacheKey, summaryHash, insight)
 
 	c.JSON(http.StatusOK, models.CompanyInsightsResponse{
 		Summary: summary,
