@@ -11,6 +11,29 @@ import (
 	"lekha-api/utils"
 )
 
+// lowBalanceThreshold is the line below which an active account gets
+// flagged as worth deactivating, and above which an inactive one gets
+// flagged as worth reactivating. Purely advisory — see Account.SuggestedAction.
+const lowBalanceThreshold = 1000.0
+
+// suggestedAccountAction computes an advisory suggestion from an account's
+// current balance and active state. Nothing calls this automatically in
+// response to a balance change — it's recomputed fresh every time an
+// account is read, so it's always consistent with the real numbers, never
+// a stored flag that could drift out of date.
+func suggestedAccountAction(balance float64, isActive bool) *string {
+	switch {
+	case isActive && balance < lowBalanceThreshold:
+		s := "deactivate"
+		return &s
+	case !isActive && balance >= lowBalanceThreshold:
+		s := "reactivate"
+		return &s
+	default:
+		return nil
+	}
+}
+
 // CreateAccount handles POST /accounts
 // Requires the requester to be a member of the target company — otherwise
 // anyone with a valid token could open an account under any company_id.
@@ -44,6 +67,7 @@ func CreateAccount(c *gin.Context) {
 		utils.RespondDBError(c, err)
 		return
 	}
+	acc.SuggestedAction = suggestedAccountAction(acc.CurrentBalance, acc.IsActive)
 
 	c.JSON(http.StatusCreated, acc)
 }
@@ -124,6 +148,7 @@ func writeAccountRows(c *gin.Context, rows *sql.Rows) {
 			utils.RespondDBError(c, err)
 			return
 		}
+		acc.SuggestedAction = suggestedAccountAction(acc.CurrentBalance, acc.IsActive)
 		accounts = append(accounts, acc)
 	}
 	c.JSON(http.StatusOK, accounts)
@@ -176,6 +201,7 @@ func GetAccountByID(c *gin.Context) {
 		utils.RespondDBError(c, err)
 		return
 	}
+	acc.SuggestedAction = suggestedAccountAction(acc.CurrentBalance, acc.IsActive)
 
 	c.JSON(http.StatusOK, acc)
 }
@@ -217,6 +243,23 @@ func UpdateAccount(c *gin.Context) {
 		return
 	}
 
+	// Activating/deactivating an account freezes or unfreezes real money
+	// movement (CreateTransfer rejects transfers on an inactive account) —
+	// that's a bigger decision than editing an account's type, so it's
+	// restricted to admins even though plain members can otherwise manage
+	// accounts. account_type changes stay open to any member.
+	if input.IsActive != nil {
+		isAdmin, err := utils.IsCompanyAdmin(companyID, userID)
+		if err != nil {
+			utils.RespondDBError(c, err)
+			return
+		}
+		if !isAdmin {
+			c.JSON(http.StatusForbidden, gin.H{"error": "only an admin of this company can activate or deactivate an account"})
+			return
+		}
+	}
+
 	var acc models.Account
 	err = config.DB.QueryRow(`
 		UPDATE accounts
@@ -237,6 +280,7 @@ func UpdateAccount(c *gin.Context) {
 		utils.RespondDBError(c, err)
 		return
 	}
+	acc.SuggestedAction = suggestedAccountAction(acc.CurrentBalance, acc.IsActive)
 
 	c.JSON(http.StatusOK, acc)
 }

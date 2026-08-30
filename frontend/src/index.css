@@ -980,7 +980,7 @@ button, input, select { font-family: inherit; font-size: 1rem; }
   border: 1px solid var(--glass-border);
   border-radius: var(--radius-sm);
   padding: 15px;
-  width: 152px;
+  width: 190px;
   display: flex;
   flex-direction: column;
   gap: 9px;
@@ -1068,6 +1068,24 @@ button, input, select { font-family: inherit; font-size: 1rem; }
 }
 .pill-active { background: rgba(42, 240, 192, 0.12); color: var(--mint); box-shadow: 0 0 8px rgba(42, 240, 192, 0.3); }
 .pill-inactive { background: rgba(255, 77, 109, 0.10); color: var(--danger); }
+
+.account-chip-status-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+.account-chip-status-row .link-btn { font-size: 0.72rem; }
+
+.account-suggestion {
+  margin: 2px 0 0;
+  padding-top: 8px;
+  border-top: 1px dashed var(--glass-border);
+  font-size: 0.74rem;
+  color: var(--amber);
+  line-height: 1.4;
+}
+.account-suggestion .link-btn { display: block; margin-top: 3px; font-size: 0.74rem; }
 
 /* ==================== Ledger table ==================== */
 

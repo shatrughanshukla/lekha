@@ -53,6 +53,8 @@ export const api = {
   deleteCompany: (token, id) => request(`/companies/${id}`, { method: 'DELETE', token }),
 
   listAccounts: (token, companyId) => request(`/accounts?company_id=${companyId}`, { token }),
+  updateAccount: (token, id, { isActive, userId }) =>
+    request(`/accounts/${id}`, { method: 'PUT', token, body: { is_active: isActive, updated_by: userId } }),
   // No company_id -> every account across every company this user belongs
   // to, used to populate the transfer "from" picker so money can move
   // between accounts in different companies the user owns.

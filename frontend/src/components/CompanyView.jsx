@@ -8,6 +8,10 @@ import {
 import TransferDetail from './TransferDetail.jsx'
 import { getCached, setCached } from '../cache.js'
 
+// Mirrors lowBalanceThreshold in the backend — display text only. The
+// actual suggestion decision always comes from the server (a.suggested_action).
+const lowBalanceThreshold = 1000
+
 export default function CompanyView({ token, user, company, onBack }) {
   const [accounts, setAccounts] = useState(() => getCached(`company:${company.id}:accounts`) ?? [])
   const [myAccounts, setMyAccounts] = useState(() => getCached('my-accounts') ?? []) // across ALL companies user belongs to
@@ -134,6 +138,18 @@ export default function CompanyView({ token, user, company, onBack }) {
     }
   }
 
+  // Admin-only — the backend enforces this too, this is just so the button
+  // doesn't sit there promising an action a non-admin can't actually take.
+  async function toggleAccountActive(id, nextActive) {
+    setError('')
+    try {
+      await api.updateAccount(token, id, { isActive: nextActive, userId: user.id })
+      refresh()
+    } catch (err) {
+      setError(err.message)
+    }
+  }
+
   async function createTransfer(e) {
     e.preventDefault()
     setError('')
@@ -181,6 +197,7 @@ export default function CompanyView({ token, user, company, onBack }) {
 
   const shownTransfers = searchResults ? searchResults.results : transfers
   const accountsById = useMemo(() => Object.fromEntries(myAccounts.map((a) => [a.id, a])), [myAccounts])
+  const isAdmin = useMemo(() => members.find((m) => m.user_id === user.id)?.is_admin ?? false, [members, user.id])
 
   // Preview-only mirror of deriveTransferType in the backend — the actual
   // value that gets recorded is always computed server-side from the real
@@ -340,9 +357,36 @@ export default function CompanyView({ token, user, company, onBack }) {
               <div className="account-chip-type">{a.account_type}</div>
               <div className="account-chip-balance"><Money value={a.current_balance} /></div>
               <CopyableID id={a.id} className="account-chip-id" />
-              <div className={a.is_active ? 'pill pill-active' : 'pill pill-inactive'}>
-                {a.is_active ? 'active' : 'inactive'}
+              <div className="account-chip-status-row">
+                <div className={a.is_active ? 'pill pill-active' : 'pill pill-inactive'}>
+                  {a.is_active ? 'active' : 'inactive'}
+                </div>
+                {isAdmin && (
+                  <button
+                    type="button"
+                    className="link-btn small"
+                    onClick={() => toggleAccountActive(a.id, !a.is_active)}
+                  >
+                    {a.is_active ? 'Deactivate' : 'Reactivate'}
+                  </button>
+                )}
               </div>
+              {a.suggested_action && (
+                <p className="account-suggestion">
+                  {a.suggested_action === 'deactivate'
+                    ? `Balance is under ₹${lowBalanceThreshold.toLocaleString()} — consider deactivating.`
+                    : `Balance has recovered — consider reactivating.`}
+                  {isAdmin && (
+                    <button
+                      type="button"
+                      className="link-btn small"
+                      onClick={() => toggleAccountActive(a.id, a.suggested_action === 'reactivate')}
+                    >
+                      {a.suggested_action === 'deactivate' ? 'Deactivate now' : 'Reactivate now'}
+                    </button>
+                  )}
+                </p>
+              )}
             </div>
           ))}
 
