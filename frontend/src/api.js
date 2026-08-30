@@ -69,12 +69,13 @@ export const api = {
   // No company_id here — the API derives which company this is recorded
   // under from the from_account itself. to_account_id can be ANY account
   // that exists, including ones in companies the user has no access to.
-  createTransfer: (token, { transferType, fromAccountId, toAccountId, amount, notes, userId }) =>
+  // transfer_type is NOT sent — the backend derives it from the two
+  // accounts' real types, so the user never has to pick it.
+  createTransfer: (token, { fromAccountId, toAccountId, amount, notes, userId }) =>
     request('/transfers', {
       method: 'POST',
       token,
       body: {
-        transfer_type: transferType,
         from_account_id: fromAccountId,
         to_account_id: toAccountId,
         amount,

@@ -76,10 +76,11 @@ func CreateTransfer(c *gin.Context) {
 	var fromBalance float64
 	var fromActive bool
 	var fromCompanyID string
+	var fromAccountType string
 	err = tx.QueryRow(
-		`SELECT current_balance, is_active, company_id FROM accounts WHERE id = $1 FOR UPDATE`,
+		`SELECT current_balance, is_active, company_id, account_type FROM accounts WHERE id = $1 FOR UPDATE`,
 		input.FromAccountID,
-	).Scan(&fromBalance, &fromActive, &fromCompanyID)
+	).Scan(&fromBalance, &fromActive, &fromCompanyID, &fromAccountType)
 	if err == sql.ErrNoRows {
 		c.JSON(http.StatusNotFound, gin.H{"error": "from_account not found"})
 		return
@@ -116,10 +117,11 @@ func CreateTransfer(c *gin.Context) {
 	// ALSO happens to control it, to decide if this needs approval at all.
 	var toActive bool
 	var toCompanyID string
+	var toAccountType string
 	err = tx.QueryRow(
-		`SELECT is_active, company_id FROM accounts WHERE id = $1 FOR UPDATE`,
+		`SELECT is_active, company_id, account_type FROM accounts WHERE id = $1 FOR UPDATE`,
 		input.ToAccountID,
-	).Scan(&toActive, &toCompanyID)
+	).Scan(&toActive, &toCompanyID, &toAccountType)
 	if err == sql.ErrNoRows {
 		c.JSON(http.StatusNotFound, gin.H{"error": "to_account not found"})
 		return
@@ -165,7 +167,12 @@ func CreateTransfer(c *gin.Context) {
 	// change between "request sent" and "request approved".
 
 	// Record the transfer under the SOURCE account's real company —
-	// derived above, never the client's word for it.
+	// derived above, never the client's word for it. transfer_type is
+	// derived too, from the two accounts' real types — the user never
+	// picks it, and it can never end up mismatched from what actually
+	// happened.
+	transferType := deriveTransferType(fromAccountType, toAccountType)
+
 	var transfer models.Transfer
 	insertQuery := `
 		INSERT INTO transfers (
@@ -177,7 +184,7 @@ func CreateTransfer(c *gin.Context) {
 		          amount, status, transfer_notes, created_by_user, updated_by_user, created_at, updated_at`
 
 	err = tx.QueryRow(insertQuery,
-		fromCompanyID, input.TransferType, input.FromAccountID, input.ToAccountID,
+		fromCompanyID, transferType, input.FromAccountID, input.ToAccountID,
 		input.Amount, status, input.TransferNotes, input.CreatedByUser,
 	).Scan(&transfer.ID, &transfer.CompanyID, &transfer.TransferType, &transfer.TransactionDate,
 		&transfer.FromAccountID, &transfer.ToAccountID, &transfer.Amount, &transfer.Status,
@@ -194,6 +201,24 @@ func CreateTransfer(c *gin.Context) {
 	}
 
 	c.JSON(http.StatusCreated, transfer)
+}
+
+// deriveTransferType infers the transfer_type enum value purely from the
+// two accounts' real types — BANK or CASH on each side. The user never
+// picks this manually, and since it's derived from the same account rows
+// the balances actually move against, it can never mismatch reality the
+// way a free-choice dropdown could.
+func deriveTransferType(fromType, toType string) string {
+	switch {
+	case fromType == "BANK" && toType == "BANK":
+		return "BANK TO BANK TRANSFER"
+	case fromType == "CASH" && toType == "BANK":
+		return "CASH DEPOSIT IN BANK"
+	case fromType == "BANK" && toType == "CASH":
+		return "CASH WITHDRAWAL FROM BANK"
+	default: // CASH -> CASH
+		return "CASH ACCOUNT TRANSFER"
+	}
 }
 
 // transferListSelect is the shared SELECT used by GetTransfers and

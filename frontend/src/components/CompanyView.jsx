@@ -1,5 +1,5 @@
 import { useState, useEffect, useMemo } from 'react'
-import { api, ACCOUNT_TYPES, TRANSFER_TYPES, STATUS_COLORS } from '../api.js'
+import { api, ACCOUNT_TYPES, STATUS_COLORS } from '../api.js'
 import {
   Money, StampBadge, ErrorNote, DeleteButton,
   IconBank, IconCash, IconPlus, IconSparkle, IconSearch, IconArrowRight,
@@ -22,7 +22,6 @@ export default function CompanyView({ token, user, company, onBack }) {
   const [accType, setAccType] = useState(ACCOUNT_TYPES[0])
   const [accBalance, setAccBalance] = useState('')
 
-  const [xferType, setXferType] = useState(TRANSFER_TYPES[2])
   const [fromAcc, setFromAcc] = useState('')
   const [toAcc, setToAcc] = useState('')
   const [amount, setAmount] = useState('')
@@ -132,7 +131,6 @@ export default function CompanyView({ token, user, company, onBack }) {
     setError('')
     try {
       await api.createTransfer(token, {
-        transferType: xferType,
         fromAccountId: fromAcc,
         toAccountId: toAcc,
         amount: Number(amount),
@@ -175,6 +173,25 @@ export default function CompanyView({ token, user, company, onBack }) {
 
   const shownTransfers = searchResults ? searchResults.results : transfers
   const accountsById = useMemo(() => Object.fromEntries(myAccounts.map((a) => [a.id, a])), [myAccounts])
+
+  // Preview-only mirror of deriveTransferType in the backend — the actual
+  // value that gets recorded is always computed server-side from the real
+  // account rows, this is purely so the form can show what will happen
+  // before the user hits Send. Falls back to null (no preview shown) when
+  // the "to" account isn't one we recognize locally, e.g. a pasted ID
+  // belonging to someone else's company.
+  const derivedTypeLabel = useMemo(() => {
+    const fromType = accounts.find((a) => a.id === fromAcc)?.account_type
+    const toType = accountsById[toAcc]?.account_type
+    if (!fromType || !toType) return null
+    const labels = {
+      'BANK-BANK': 'Bank to Bank Transfer',
+      'CASH-BANK': 'Cash Deposit in Bank',
+      'BANK-CASH': 'Cash Withdrawal from Bank',
+      'CASH-CASH': 'Cash Account Transfer',
+    }
+    return labels[`${fromType}-${toType}`]
+  }, [fromAcc, toAcc, accounts, accountsById])
 
   return (
     <div className="page">
@@ -354,9 +371,6 @@ export default function CompanyView({ token, user, company, onBack }) {
       <section className="panel">
         <h2>Transfers</h2>
         <form className="inline-form wrap" onSubmit={createTransfer}>
-          <select value={xferType} onChange={(e) => setXferType(e.target.value)}>
-            {TRANSFER_TYPES.map((t) => <option key={t}>{t}</option>)}
-          </select>
           <select value={fromAcc} onChange={(e) => setFromAcc(e.target.value)} required>
             <option value="">from…</option>
             {accounts.map((a) => (
@@ -384,6 +398,11 @@ export default function CompanyView({ token, user, company, onBack }) {
           <input placeholder="Note (optional)" value={notes} onChange={(e) => setNotes(e.target.value)} />
           <button className="btn-primary small" type="submit">Send</button>
         </form>
+        <p className="panel-hint">
+          {derivedTypeLabel
+            ? <>Will be recorded as <strong>{derivedTypeLabel}</strong> — detected automatically from the two accounts' types.</>
+            : 'The transfer type (bank/cash) is detected automatically from the accounts involved — no need to pick it.'}
+        </p>
 
         {shownTransfers.length === 0 ? (
           <div className="empty-state">No transfers to show.</div>

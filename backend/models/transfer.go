@@ -43,9 +43,11 @@ type Transfer struct {
 // CreateTransferInput is the payload accepted by POST /transfers.
 // There is deliberately no company_id field — the transfer's company is
 // derived server-side from from_account_id's real owning company, never
-// trusted from the client. See transfer_handler.go for why.
+// trusted from the client. There's also no transfer_type field — it's
+// derived from the two accounts' real types (see deriveTransferType in
+// transfer_handler.go), so the user never has to pick it and it can never
+// end up mismatched from what the accounts actually are.
 type CreateTransferInput struct {
-	TransferType  string  `json:"transfer_type" binding:"required,oneof='CASH DEPOSIT IN BANK' 'CASH WITHDRAWAL FROM BANK' 'BANK TO BANK TRANSFER' 'CASH ACCOUNT TRANSFER'"`
 	FromAccountID string  `json:"from_account_id" binding:"required,uuid"`
 	ToAccountID   string  `json:"to_account_id" binding:"required,uuid,nefield=FromAccountID"`
 	Amount        float64 `json:"amount" binding:"required,gt=0"`
