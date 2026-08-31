@@ -4,6 +4,8 @@ import Dashboard from './components/Dashboard.jsx'
 import CompanyView from './components/CompanyView.jsx'
 import ProfileModal from './components/ProfileModal.jsx'
 import { IconLekhaMark, IconSun, IconMoon } from './components/Shared.jsx'
+import { useT } from './i18n.jsx'
+import { api } from './api.js'
 
 export default function App() {
   const [token, setToken] = useState(() => localStorage.getItem('lekha_token') || '')
@@ -15,6 +17,7 @@ export default function App() {
   const [theme, setTheme] = useState(() => localStorage.getItem('lekha_theme') || 'dark')
   const [showProfile, setShowProfile] = useState(false)
   const [avatarBroken, setAvatarBroken] = useState(false)
+  const { t, lang, setLang } = useT()
 
   useEffect(() => {
     document.documentElement.setAttribute('data-theme', theme)
@@ -25,17 +28,41 @@ export default function App() {
     setTheme((t) => (t === 'dark' ? 'light' : 'dark'))
   }
 
+  function toggleLang() {
+    const next = lang === 'en' ? 'hi' : 'en'
+    setLang(next)
+    // Keep it persisted to the profile too, so it actually "always follows
+    // you across devices" the way it's supposed to, not just this browser.
+    if (user && token) {
+      api.updateUser(token, user.id, { preferred_language: next })
+        .then(handleProfileUpdated)
+        .catch(() => {}) // language still switches locally even if the save fails
+    }
+  }
+
   function handleProfileUpdated(updatedUser) {
     localStorage.setItem('lekha_user', JSON.stringify(updatedUser))
     setUser(updatedUser)
     setAvatarBroken(false)
   }
 
-  function handleAuthed(newToken, newUser) {
+  function handleAuthed(newToken, newUser, mode) {
     localStorage.setItem('lekha_token', newToken)
     localStorage.setItem('lekha_user', JSON.stringify(newUser))
     setToken(newToken)
     setUser(newUser)
+
+    if (mode === 'signup') {
+      // Brand new account — push whatever language was already chosen on
+      // this device up to the new profile, if it's not already the same.
+      if (newUser.preferred_language !== lang) {
+        api.updateUser(newToken, newUser.id, { preferred_language: lang }).catch(() => {})
+      }
+    } else if (newUser.preferred_language && newUser.preferred_language !== lang) {
+      // Returning user — their saved preference follows them across
+      // devices, so adopt it even if this browser had something else set.
+      setLang(newUser.preferred_language)
+    }
   }
 
   function signOut() {
@@ -55,14 +82,17 @@ export default function App() {
       <header className="top-bar">
         <div className="wordmark small"><IconLekhaMark />Lekha</div>
         <div className="top-bar-right">
+          <button className="lang-toggle" onClick={toggleLang} title={t('lang_switch_title')}>
+            {lang === 'en' ? 'हिं' : 'EN'}
+          </button>
           <button
             className="theme-toggle"
             onClick={toggleTheme}
-            title={theme === 'dark' ? 'Switch to light mode' : 'Switch to dark mode'}
+            title={theme === 'dark' ? t('theme_to_light') : t('theme_to_dark')}
           >
             {theme === 'dark' ? <IconSun /> : <IconMoon />}
           </button>
-          <button className="user-name-btn" onClick={() => setShowProfile(true)} title="Edit your profile">
+          <button className="user-name-btn" onClick={() => setShowProfile(true)} title={t('edit_profile')}>
             {user.profile_picture_url && !avatarBroken ? (
               <img
                 src={user.profile_picture_url}
@@ -76,7 +106,7 @@ export default function App() {
             <span className="user-name">{user.name}</span>
           </button>
           <button className="btn-ghost" onClick={signOut}>
-            Sign out
+            {t('sign_out')}
           </button>
         </div>
       </header>

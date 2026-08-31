@@ -1,6 +1,7 @@
 package utils
 
 import (
+	"log"
 	"net/http"
 
 	"github.com/gin-gonic/gin"
@@ -24,15 +25,20 @@ func RespondDBError(c *gin.Context, err error) {
 	if pqErr, ok := err.(*pq.Error); ok {
 		switch pqErr.Code {
 		case "23503":
-			c.JSON(http.StatusBadRequest, gin.H{"error": "referenced record does not exist"})
+			c.JSON(http.StatusBadRequest, gin.H{"error": Msg(c, "fk_violation")})
 			return
 		case "23505":
-			c.JSON(http.StatusConflict, gin.H{"error": "resource already exists"})
+			c.JSON(http.StatusConflict, gin.H{"error": Msg(c, "resource_exists")})
 			return
 		case "22P02":
-			c.JSON(http.StatusBadRequest, gin.H{"error": "invalid value in request"})
+			c.JSON(http.StatusBadRequest, gin.H{"error": Msg(c, "invalid_value_request")})
 			return
 		}
 	}
-	c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+	// A genuinely unexpected DB failure — the raw error text is useful in
+	// server logs but not something to hand a user, so log it and return a
+	// generic localized message instead of leaking internals or English-only
+	// Postgres text regardless of the user's language.
+	log.Printf("unexpected database error: %v", err)
+	c.JSON(http.StatusInternalServerError, gin.H{"error": Msg(c, "unexpected_error")})
 }

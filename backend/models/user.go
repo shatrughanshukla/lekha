@@ -4,13 +4,14 @@ import "time"
 
 // User mirrors the `users` table.
 type User struct {
-	ID                string    `json:"id"`
-	Name              string    `json:"name"`
-	Email             string    `json:"email"`
-	PasswordHash      string    `json:"-"` // never serialize the hash back to clients
-	ProfilePictureURL *string   `json:"profile_picture_url"`
-	CreatedAt         time.Time `json:"created_at"`
-	UpdatedAt         time.Time `json:"updated_at"`
+	ID                 string    `json:"id"`
+	Name               string    `json:"name"`
+	Email              string    `json:"email"`
+	PasswordHash       string    `json:"-"` // never serialize the hash back to clients
+	ProfilePictureURL  *string   `json:"profile_picture_url"`
+	PreferredLanguage  string    `json:"preferred_language"`
+	CreatedAt          time.Time `json:"created_at"`
+	UpdatedAt          time.Time `json:"updated_at"`
 }
 
 // UpdateUserInput is the payload accepted by PUT /users/:id.
@@ -19,4 +20,5 @@ type UpdateUserInput struct {
 	Name              *string `json:"name"`
 	Email             *string `json:"email"`
 	ProfilePictureURL *string `json:"profile_picture_url"`
+	PreferredLanguage *string `json:"preferred_language" binding:"omitempty,oneof=en hi"`
 }

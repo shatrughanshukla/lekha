@@ -1,11 +1,13 @@
 import { useState, useEffect } from 'react'
 import { api, STATUS_COLORS } from '../api.js'
 import { Modal, Money, StampBadge, ErrorNote } from './Shared.jsx'
+import { useT } from '../i18n.jsx'
 
 export default function TransferDetail({ token, user, company, transferId, onClose, onChanged }) {
   const [t, setT] = useState(null)
   const [error, setError] = useState('')
   const [acting, setActing] = useState(false)
+  const { t: tr, tType, tAccountType, dateLocale } = useT()
 
   useEffect(() => {
     api.getTransfer(token, transferId)
@@ -43,53 +45,53 @@ export default function TransferDetail({ token, user, company, transferId, onClo
   }
 
   return (
-    <Modal title="Transfer details" onClose={onClose}>
+    <Modal title={tr('transfer_details_title')} onClose={onClose}>
       <ErrorNote message={error} />
       {!t ? (
-        <p className="panel-hint">Loading…</p>
+        <p className="panel-hint">{tr('loading')}</p>
       ) : (
         <div className="detail-grid">
           <div className="detail-row">
-            <span className="detail-label">Amount</span>
+            <span className="detail-label">{tr('amount_label')}</span>
             <span className="detail-value"><Money value={t.amount} /></span>
           </div>
           <div className="detail-row">
-            <span className="detail-label">Type</span>
-            <span className="detail-value">{t.transfer_type}</span>
+            <span className="detail-label">{tr('type_label')}</span>
+            <span className="detail-value">{tType(t.transfer_type)}</span>
           </div>
           <div className="detail-row">
-            <span className="detail-label">From</span>
+            <span className="detail-label">{tr('from_label')}</span>
             <span className="detail-value">
-              {t.from_company_name} — {t.from_account_type}
+              {t.from_company_name} — {tAccountType(t.from_account_type)}
               <div className="detail-sub mono">{t.from_account_id}</div>
             </span>
           </div>
           <div className="detail-row">
-            <span className="detail-label">To</span>
+            <span className="detail-label">{tr('to_label')}</span>
             <span className="detail-value">
-              {t.to_company_name} — {t.to_account_type}
+              {t.to_company_name} — {tAccountType(t.to_account_type)}
               <div className="detail-sub mono">{t.to_account_id}</div>
             </span>
           </div>
           <div className="detail-row">
-            <span className="detail-label">Note</span>
-            <span className="detail-value">{t.transfer_notes || <em className="dim">none</em>}</span>
+            <span className="detail-label">{tr('note_label')}</span>
+            <span className="detail-value">{t.transfer_notes || <em className="dim">{tr('none')}</em>}</span>
           </div>
           <div className="detail-row">
-            <span className="detail-label">Created</span>
+            <span className="detail-label">{tr('created_label')}</span>
             <span className="detail-value timestamp">
-              {t.created_by_name} — {new Date(t.created_at).toLocaleString()}
+              {t.created_by_name} — {new Date(t.created_at).toLocaleString(dateLocale)}
             </span>
           </div>
           <div className="detail-row">
-            <span className="detail-label">Last updated</span>
+            <span className="detail-label">{tr('last_updated_label')}</span>
             <span className="detail-value timestamp">
-              {t.updated_by_name} — {new Date(t.updated_at).toLocaleString()}
+              {t.updated_by_name} — {new Date(t.updated_at).toLocaleString(dateLocale)}
             </span>
           </div>
 
           <div className="detail-row">
-            <span className="detail-label">Status</span>
+            <span className="detail-label">{tr('status_label')}</span>
             <span className="detail-value">
               <StampBadge status={t.status} color={STATUS_COLORS[t.status]} />
             </span>
@@ -107,28 +109,29 @@ export default function TransferDetail({ token, user, company, transferId, onClo
 // the other side, proposing a reversal, or nothing at all once a transfer
 // has reached a terminal state (CANCELLED/REVERSED).
 function ApprovalArea({ t, company, acting, onRespond, onPropose }) {
+  const { t: tr } = useT()
   const isSenderSide = company.id === t.company_id
 
   if (t.status === 'PENDING') {
     if (isSenderSide) {
       return (
         <div className="approval-banner">
-          <p className="panel-hint">Waiting for the receiving company to approve this transfer. No money has moved yet.</p>
+          <p className="panel-hint">{tr('waiting_receiver')}</p>
           <button className="btn-ghost small" disabled={acting} onClick={() => onRespond(false)}>
-            {acting ? '…' : 'Cancel request'}
+            {acting ? '…' : tr('cancel_request')}
           </button>
         </div>
       )
     }
     return (
       <div className="approval-banner">
-        <p className="panel-hint">This transfer needs your approval before any money moves.</p>
+        <p className="panel-hint">{tr('needs_your_approval')}</p>
         <div className="approval-actions">
           <button className="btn-primary small" disabled={acting} onClick={() => onRespond(true)}>
-            {acting ? '…' : 'Approve'}
+            {acting ? '…' : tr('approve')}
           </button>
           <button className="btn-ghost small" disabled={acting} onClick={() => onRespond(false)}>
-            Reject
+            {tr('reject')}
           </button>
         </div>
       </div>
@@ -141,21 +144,20 @@ function ApprovalArea({ t, company, acting, onRespond, onPropose }) {
       return (
         <div className="approval-banner">
           <p className="panel-hint">
-            {t.proposed_by_name ? `${t.proposed_by_name} proposed` : 'You proposed'} reversing this transfer.
-            Waiting for the other company to respond — the money hasn't moved.
+            {tr('proposed_reversal_msg', { who: t.proposed_by_name || tr('you_proposed_word') })}
           </p>
         </div>
       )
     }
     return (
       <div className="approval-banner">
-        <p className="panel-hint">The other company wants to reverse this transfer.</p>
+        <p className="panel-hint">{tr('other_wants_reverse')}</p>
         <div className="approval-actions">
           <button className="btn-primary small" disabled={acting} onClick={() => onRespond(true)}>
-            {acting ? '…' : 'Approve reversal'}
+            {acting ? '…' : tr('approve_reversal')}
           </button>
           <button className="btn-ghost small" disabled={acting} onClick={() => onRespond(false)}>
-            Reject
+            {tr('reject')}
           </button>
         </div>
       </div>
@@ -166,7 +168,7 @@ function ApprovalArea({ t, company, acting, onRespond, onPropose }) {
     return (
       <div className="approval-banner">
         <button className="link-btn small danger" disabled={acting} onClick={onPropose}>
-          {acting ? '…' : 'Propose reversing this transfer'}
+          {acting ? '…' : tr('propose_reversing')}
         </button>
       </div>
     )

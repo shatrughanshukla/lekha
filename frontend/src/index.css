@@ -216,6 +216,7 @@ button, input, select { font-family: inherit; font-size: 1rem; }
 /* ==================== Auth: split-screen hero ==================== */
 
 .auth-page {
+  position: relative;
   min-height: 100vh;
   display: grid;
   grid-template-columns: 1.1fr 1fr;
@@ -577,7 +578,7 @@ button, input, select { font-family: inherit; font-size: 1rem; }
   color: var(--text-dim);
   font-weight: 600;
 }
-.profile-form input {
+.profile-form input, .profile-form select {
   display: block;
   width: 100%;
   margin-top: 8px;
@@ -588,11 +589,12 @@ button, input, select { font-family: inherit; font-size: 1rem; }
   color: var(--text);
   transition: border-color 0.15s, box-shadow 0.15s, background 0.15s;
 }
-.profile-form input:focus {
+.profile-form input:focus, .profile-form select:focus {
   border-color: var(--cyan);
   outline: none;
   box-shadow: 0 0 0 3px rgba(45, 212, 255, 0.15);
 }
+.profile-form select option { background: var(--select-option-bg); color: var(--select-option-text); }
 .profile-form .panel-hint { margin: -6px 0 0; font-size: 0.78rem; }
 
 .theme-toggle {
@@ -613,6 +615,35 @@ button, input, select { font-family: inherit; font-size: 1rem; }
   border-color: var(--cyan);
   box-shadow: 0 0 14px rgba(45, 212, 255, 0.3);
   transform: rotate(15deg);
+}
+
+.lang-toggle {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 38px;
+  height: 38px;
+  padding: 0 10px;
+  border-radius: 999px;
+  background: var(--glass);
+  border: 1px solid var(--glass-border);
+  color: var(--text-dim);
+  font-family: var(--display);
+  font-weight: 700;
+  font-size: 0.8rem;
+  cursor: pointer;
+  transition: color 0.15s, border-color 0.15s, box-shadow 0.15s;
+}
+.lang-toggle:hover {
+  color: var(--violet-2);
+  border-color: var(--violet-2);
+  box-shadow: 0 0 14px rgba(139, 92, 246, 0.3);
+}
+.auth-lang-toggle {
+  position: absolute;
+  top: 20px;
+  right: 24px;
+  z-index: 5;
 }
 
 .page { max-width: 980px; margin: 0 auto; padding: 44px 24px 90px; }

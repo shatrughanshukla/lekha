@@ -42,7 +42,7 @@ Rules:
 func SearchTransfers(c *gin.Context) {
 	var input models.SearchTransfersInput
 	if err := c.ShouldBindJSON(&input); err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		c.JSON(http.StatusBadRequest, gin.H{"error": utils.Msg(c, "invalid_request_data")})
 		return
 	}
 
@@ -53,13 +53,13 @@ func SearchTransfers(c *gin.Context) {
 		return
 	}
 	if !isMember {
-		c.JSON(http.StatusNotFound, gin.H{"error": "company not found"})
+		c.JSON(http.StatusNotFound, gin.H{"error": utils.Msg(c, "company_not_found")})
 		return
 	}
 
 	raw, err := utils.CallGemini(searchSystemPrompt, input.Query)
 	if err != nil {
-		c.JSON(http.StatusServiceUnavailable, gin.H{"error": "search assistant unavailable: " + err.Error()})
+		c.JSON(http.StatusServiceUnavailable, gin.H{"error": utils.Msg(c, "search_assistant_unavailable") + err.Error()})
 		return
 	}
 
@@ -73,7 +73,7 @@ func SearchTransfers(c *gin.Context) {
 
 	var filters models.ParsedSearchFilters
 	if err := json.Unmarshal([]byte(cleaned), &filters); err != nil {
-		c.JSON(http.StatusBadGateway, gin.H{"error": "search assistant returned an unexpected format"})
+		c.JSON(http.StatusBadGateway, gin.H{"error": utils.Msg(c, "search_bad_format")})
 		return
 	}
 

@@ -1,13 +1,14 @@
 import { useRef, useState } from 'react'
 import { api } from '../api.js'
 import { Modal, ErrorNote, IconCamera } from './Shared.jsx'
+import { useT } from '../i18n.jsx'
 
 const MAX_FILE_BYTES = 5 * 1024 * 1024 // keep in sync with the backend's limit
 const ACCEPTED_TYPES = ['image/jpeg', 'image/png', 'image/webp', 'image/gif']
 
-// Lets a signed-in user view and edit their name/email, and upload a real
-// profile photo from their device (stored in Supabase Storage on the
-// backend — see POST /users/:id/profile-picture).
+// Lets a signed-in user view and edit their name/email/language, and
+// upload a real profile photo from their device (stored in Supabase
+// Storage on the backend — see POST /users/:id/profile-picture).
 export default function ProfileModal({ token, user, onClose, onUpdated }) {
   const [name, setName] = useState(user.name)
   const [email, setEmail] = useState(user.email)
@@ -17,6 +18,7 @@ export default function ProfileModal({ token, user, onClose, onUpdated }) {
   const [saving, setSaving] = useState(false)
   const [error, setError] = useState('')
   const fileInputRef = useRef(null)
+  const { t, lang, setLang } = useT()
 
   const initials = name?.[0]?.toUpperCase() || '?'
   const displayedImage = previewUrl || pictureUrl
@@ -33,11 +35,11 @@ export default function ProfileModal({ token, user, onClose, onUpdated }) {
     setError('')
 
     if (!ACCEPTED_TYPES.includes(file.type)) {
-      setError('Please choose a JPEG, PNG, WEBP, or GIF image.')
+      setError(t('invalid_image_type'))
       return
     }
     if (file.size > MAX_FILE_BYTES) {
-      setError('That image is too large — please choose one under 5MB.')
+      setError(t('image_too_large'))
       return
     }
 
@@ -74,6 +76,19 @@ export default function ProfileModal({ token, user, onClose, onUpdated }) {
     }
   }
 
+  async function handleLangChange(e) {
+    const next = e.target.value
+    setLang(next)
+    try {
+      const updated = await api.updateUser(token, user.id, { preferred_language: next })
+      onUpdated(updated)
+    } catch (err) {
+      // Language still switches locally even if the profile save fails —
+      // don't block the UI language change over a network hiccup.
+      setError(err.message)
+    }
+  }
+
   async function handleSave(e) {
     e.preventDefault()
     setError('')
@@ -90,7 +105,7 @@ export default function ProfileModal({ token, user, onClose, onUpdated }) {
   }
 
   return (
-    <Modal title="Your profile" onClose={onClose}>
+    <Modal title={t('your_profile_title')} onClose={onClose}>
       <div className="profile-avatar-row">
         <div className="profile-avatar-wrap">
           {displayedImage ? (
@@ -98,13 +113,13 @@ export default function ProfileModal({ token, user, onClose, onUpdated }) {
           ) : (
             <div className="profile-avatar-lg profile-avatar-fallback">{initials}</div>
           )}
-          {uploading && <div className="profile-avatar-spinner" aria-label="Uploading" />}
+          {uploading && <div className="profile-avatar-spinner" aria-label={t('saving')} />}
           <button
             type="button"
             className="profile-avatar-edit-btn"
             onClick={openFilePicker}
             disabled={uploading}
-            title="Change photo"
+            title={t('change_photo')}
           >
             <IconCamera width={15} height={15} />
           </button>
@@ -120,11 +135,11 @@ export default function ProfileModal({ token, user, onClose, onUpdated }) {
 
         <div className="profile-avatar-actions">
           <button type="button" className="link-btn small" onClick={openFilePicker} disabled={uploading}>
-            {displayedImage ? 'Change photo' : 'Upload photo'}
+            {displayedImage ? t('change_photo') : t('upload_photo')}
           </button>
           {displayedImage && (
             <button type="button" className="link-btn small danger" onClick={handleRemovePhoto} disabled={uploading}>
-              Remove
+              {t('remove')}
             </button>
           )}
         </div>
@@ -132,18 +147,25 @@ export default function ProfileModal({ token, user, onClose, onUpdated }) {
 
       <form className="profile-form" onSubmit={handleSave}>
         <label>
-          Name
+          {t('name_label')}
           <input value={name} onChange={(e) => setName(e.target.value)} required />
         </label>
         <label>
-          Email
+          {t('email_label')}
           <input type="email" value={email} onChange={(e) => setEmail(e.target.value)} required />
+        </label>
+        <label>
+          {t('language_label')}
+          <select value={lang} onChange={handleLangChange}>
+            <option value="en">{t('lang_name_en')}</option>
+            <option value="hi">{t('lang_name_hi')}</option>
+          </select>
         </label>
 
         <ErrorNote message={error} />
 
         <button className="btn-primary full" type="submit" disabled={saving}>
-          {saving ? 'Saving…' : 'Save changes'}
+          {saving ? t('saving') : t('save_changes')}
         </button>
       </form>
     </Modal>

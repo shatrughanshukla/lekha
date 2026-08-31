@@ -59,7 +59,7 @@ import (
 func CreateTransfer(c *gin.Context) {
 	var input models.CreateTransferInput
 	if err := c.ShouldBindJSON(&input); err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		c.JSON(http.StatusBadRequest, gin.H{"error": utils.Msg(c, "invalid_request_data")})
 		return
 	}
 
@@ -82,7 +82,7 @@ func CreateTransfer(c *gin.Context) {
 		input.FromAccountID,
 	).Scan(&fromBalance, &fromActive, &fromCompanyID, &fromAccountType)
 	if err == sql.ErrNoRows {
-		c.JSON(http.StatusNotFound, gin.H{"error": "from_account not found"})
+		c.JSON(http.StatusNotFound, gin.H{"error": utils.Msg(c, "from_account_not_found")})
 		return
 	}
 	if err != nil {
@@ -101,12 +101,12 @@ func CreateTransfer(c *gin.Context) {
 		return
 	}
 	if !isSenderMember {
-		c.JSON(http.StatusNotFound, gin.H{"error": "from_account not found"})
+		c.JSON(http.StatusNotFound, gin.H{"error": utils.Msg(c, "from_account_not_found")})
 		return
 	}
 
 	if !fromActive {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "from_account is not active"})
+		c.JSON(http.StatusBadRequest, gin.H{"error": utils.Msg(c, "from_account_inactive")})
 		return
 	}
 
@@ -123,7 +123,7 @@ func CreateTransfer(c *gin.Context) {
 		input.ToAccountID,
 	).Scan(&toActive, &toCompanyID, &toAccountType)
 	if err == sql.ErrNoRows {
-		c.JSON(http.StatusNotFound, gin.H{"error": "to_account not found"})
+		c.JSON(http.StatusNotFound, gin.H{"error": utils.Msg(c, "to_account_not_found")})
 		return
 	}
 	if err != nil {
@@ -131,7 +131,7 @@ func CreateTransfer(c *gin.Context) {
 		return
 	}
 	if !toActive {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "to_account is not active"})
+		c.JSON(http.StatusBadRequest, gin.H{"error": utils.Msg(c, "to_account_inactive")})
 		return
 	}
 
@@ -148,7 +148,7 @@ func CreateTransfer(c *gin.Context) {
 		// version always took. Balance still has to be checked NOW,
 		// because we're about to move it now.
 		if fromBalance < input.Amount {
-			c.JSON(http.StatusBadRequest, gin.H{"error": "insufficient balance in from_account"})
+			c.JSON(http.StatusBadRequest, gin.H{"error": utils.Msg(c, "insufficient_balance")})
 			return
 		}
 		if _, err = tx.Exec(`UPDATE accounts SET current_balance = current_balance - $1 WHERE id = $2`, input.Amount, input.FromAccountID); err != nil {
@@ -267,19 +267,19 @@ func GetTransfers(c *gin.Context) {
 	status := c.Query("status")
 
 	if companyID == "" {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "company_id query parameter is required"})
+		c.JSON(http.StatusBadRequest, gin.H{"error": utils.Msg(c, "company_id_required")})
 		return
 	}
 	if !utils.IsValidUUID(companyID) {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "invalid company_id format, expected a UUID"})
+		c.JSON(http.StatusBadRequest, gin.H{"error": utils.Msg(c, "invalid_company_id")})
 		return
 	}
 	if accountID != "" && !utils.IsValidUUID(accountID) {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "invalid account_id format, expected a UUID"})
+		c.JSON(http.StatusBadRequest, gin.H{"error": utils.Msg(c, "invalid_account_id")})
 		return
 	}
 	if status != "" && !utils.IsValidTransferStatus(status) {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "invalid status value"})
+		c.JSON(http.StatusBadRequest, gin.H{"error": utils.Msg(c, "invalid_status")})
 		return
 	}
 
@@ -290,7 +290,7 @@ func GetTransfers(c *gin.Context) {
 		return
 	}
 	if !isMember {
-		c.JSON(http.StatusNotFound, gin.H{"error": "company not found"})
+		c.JSON(http.StatusNotFound, gin.H{"error": utils.Msg(c, "company_not_found")})
 		return
 	}
 
@@ -326,13 +326,13 @@ func GetTransfers(c *gin.Context) {
 func GetTransferByID(c *gin.Context) {
 	id := c.Param("id")
 	if !utils.IsValidUUID(id) {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "invalid id format, expected a UUID"})
+		c.JSON(http.StatusBadRequest, gin.H{"error": utils.Msg(c, "invalid_id")})
 		return
 	}
 
 	fromCompanyID, toCompanyID, err := utils.PartyCompanyIDsForTransfer(id)
 	if err == sql.ErrNoRows {
-		c.JSON(http.StatusNotFound, gin.H{"error": "transfer not found"})
+		c.JSON(http.StatusNotFound, gin.H{"error": utils.Msg(c, "transfer_not_found")})
 		return
 	}
 	if err != nil {
@@ -352,14 +352,14 @@ func GetTransferByID(c *gin.Context) {
 		return
 	}
 	if !isSenderMember && !isReceiverMember {
-		c.JSON(http.StatusNotFound, gin.H{"error": "transfer not found"})
+		c.JSON(http.StatusNotFound, gin.H{"error": utils.Msg(c, "transfer_not_found")})
 		return
 	}
 
 	row := config.DB.QueryRow(transferListSelect+` WHERE t.id = $1`, id)
 	t, err := scanTransferRow(row)
 	if err == sql.ErrNoRows {
-		c.JSON(http.StatusNotFound, gin.H{"error": "transfer not found"})
+		c.JSON(http.StatusNotFound, gin.H{"error": utils.Msg(c, "transfer_not_found")})
 		return
 	}
 	if err != nil {
@@ -380,19 +380,19 @@ func GetTransferByID(c *gin.Context) {
 func ProposeTransferStatus(c *gin.Context) {
 	id := c.Param("id")
 	if !utils.IsValidUUID(id) {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "invalid id format, expected a UUID"})
+		c.JSON(http.StatusBadRequest, gin.H{"error": utils.Msg(c, "invalid_id")})
 		return
 	}
 
 	var input models.ProposeStatusInput
 	if err := c.ShouldBindJSON(&input); err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		c.JSON(http.StatusBadRequest, gin.H{"error": utils.Msg(c, "invalid_request_data")})
 		return
 	}
 
 	fromCompanyID, toCompanyID, err := utils.PartyCompanyIDsForTransfer(id)
 	if err == sql.ErrNoRows {
-		c.JSON(http.StatusNotFound, gin.H{"error": "transfer not found"})
+		c.JSON(http.StatusNotFound, gin.H{"error": utils.Msg(c, "transfer_not_found")})
 		return
 	}
 	if err != nil {
@@ -412,7 +412,7 @@ func ProposeTransferStatus(c *gin.Context) {
 		return
 	}
 	if !isSenderMember && !isReceiverMember {
-		c.JSON(http.StatusNotFound, gin.H{"error": "transfer not found"})
+		c.JSON(http.StatusNotFound, gin.H{"error": utils.Msg(c, "transfer_not_found")})
 		return
 	}
 
@@ -432,7 +432,7 @@ func ProposeTransferStatus(c *gin.Context) {
 		id,
 	).Scan(&currentStatus, &pendingStatus, &fromAccountID, &toAccountID, &amount)
 	if err == sql.ErrNoRows {
-		c.JSON(http.StatusNotFound, gin.H{"error": "transfer not found"})
+		c.JSON(http.StatusNotFound, gin.H{"error": utils.Msg(c, "transfer_not_found")})
 		return
 	}
 	if err != nil {
@@ -441,11 +441,11 @@ func ProposeTransferStatus(c *gin.Context) {
 	}
 
 	if currentStatus != "COMPLETED" {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "only a completed transfer can be proposed for reversal"})
+		c.JSON(http.StatusBadRequest, gin.H{"error": utils.Msg(c, "only_completed_can_reverse")})
 		return
 	}
 	if pendingStatus.Valid {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "there is already a proposal awaiting a decision on this transfer"})
+		c.JSON(http.StatusBadRequest, gin.H{"error": utils.Msg(c, "proposal_already_pending")})
 		return
 	}
 
@@ -527,19 +527,19 @@ func scanBareTransferRow(row *sql.Row) (models.Transfer, error) {
 func RespondToTransfer(c *gin.Context) {
 	id := c.Param("id")
 	if !utils.IsValidUUID(id) {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "invalid id format, expected a UUID"})
+		c.JSON(http.StatusBadRequest, gin.H{"error": utils.Msg(c, "invalid_id")})
 		return
 	}
 
 	var input models.ApprovalInput
 	if err := c.ShouldBindJSON(&input); err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		c.JSON(http.StatusBadRequest, gin.H{"error": utils.Msg(c, "invalid_request_data")})
 		return
 	}
 
 	fromCompanyID, toCompanyID, err := utils.PartyCompanyIDsForTransfer(id)
 	if err == sql.ErrNoRows {
-		c.JSON(http.StatusNotFound, gin.H{"error": "transfer not found"})
+		c.JSON(http.StatusNotFound, gin.H{"error": utils.Msg(c, "transfer_not_found")})
 		return
 	}
 	if err != nil {
@@ -559,7 +559,7 @@ func RespondToTransfer(c *gin.Context) {
 		return
 	}
 	if !isSenderMember && !isReceiverMember {
-		c.JSON(http.StatusNotFound, gin.H{"error": "transfer not found"})
+		c.JSON(http.StatusNotFound, gin.H{"error": utils.Msg(c, "transfer_not_found")})
 		return
 	}
 
@@ -580,7 +580,7 @@ func RespondToTransfer(c *gin.Context) {
 		id,
 	).Scan(&currentStatus, &pendingStatus, &proposedByCompanyID, &fromAccountID, &toAccountID, &amount)
 	if err == sql.ErrNoRows {
-		c.JSON(http.StatusNotFound, gin.H{"error": "transfer not found"})
+		c.JSON(http.StatusNotFound, gin.H{"error": utils.Msg(c, "transfer_not_found")})
 		return
 	}
 	if err != nil {
@@ -594,7 +594,7 @@ func RespondToTransfer(c *gin.Context) {
 	case currentStatus == "PENDING":
 		if input.Approve {
 			if !isReceiverMember {
-				c.JSON(http.StatusForbidden, gin.H{"error": "only the receiving company can approve a pending transfer"})
+				c.JSON(http.StatusForbidden, gin.H{"error": utils.Msg(c, "only_receiver_can_approve")})
 				return
 			}
 			// Authoritative balance check — the only one that matters,
@@ -607,11 +607,11 @@ func RespondToTransfer(c *gin.Context) {
 				return
 			}
 			if !fromActive {
-				c.JSON(http.StatusBadRequest, gin.H{"error": "the sending account is no longer active"})
+				c.JSON(http.StatusBadRequest, gin.H{"error": utils.Msg(c, "sending_account_inactive")})
 				return
 			}
 			if fromBalance < amount {
-				c.JSON(http.StatusBadRequest, gin.H{"error": "the sending account no longer has sufficient balance"})
+				c.JSON(http.StatusBadRequest, gin.H{"error": utils.Msg(c, "sending_account_insufficient")})
 				return
 			}
 			if _, err = tx.Exec(`UPDATE accounts SET current_balance = current_balance - $1 WHERE id = $2`, amount, fromAccountID); err != nil {
@@ -635,7 +635,7 @@ func RespondToTransfer(c *gin.Context) {
 			requesterCompanyID = toCompanyID
 		}
 		if proposedByCompanyID.Valid && proposedByCompanyID.String == requesterCompanyID {
-			c.JSON(http.StatusForbidden, gin.H{"error": "you already proposed this change — waiting on the other company to respond"})
+			c.JSON(http.StatusForbidden, gin.H{"error": utils.Msg(c, "already_proposed_by_you")})
 			return
 		}
 		if input.Approve {
@@ -655,7 +655,7 @@ func RespondToTransfer(c *gin.Context) {
 		}
 
 	default:
-		c.JSON(http.StatusBadRequest, gin.H{"error": "there is nothing awaiting approval on this transfer"})
+		c.JSON(http.StatusBadRequest, gin.H{"error": utils.Msg(c, "nothing_awaiting_approval")})
 		return
 	}
 

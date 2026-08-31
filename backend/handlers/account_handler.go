@@ -40,7 +40,7 @@ func suggestedAccountAction(balance float64, isActive bool) *string {
 func CreateAccount(c *gin.Context) {
 	var input models.CreateAccountInput
 	if err := c.ShouldBindJSON(&input); err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		c.JSON(http.StatusBadRequest, gin.H{"error": utils.Msg(c, "invalid_request_data")})
 		return
 	}
 
@@ -51,7 +51,7 @@ func CreateAccount(c *gin.Context) {
 		return
 	}
 	if !isMember {
-		c.JSON(http.StatusNotFound, gin.H{"error": "company not found"})
+		c.JSON(http.StatusNotFound, gin.H{"error": utils.Msg(c, "company_not_found")})
 		return
 	}
 
@@ -90,7 +90,7 @@ func GetAccounts(c *gin.Context) {
 
 	if companyID != "" {
 		if !utils.IsValidUUID(companyID) {
-			c.JSON(http.StatusBadRequest, gin.H{"error": "invalid company_id format, expected a UUID"})
+			c.JSON(http.StatusBadRequest, gin.H{"error": utils.Msg(c, "invalid_company_id")})
 			return
 		}
 		isMember, err := utils.IsCompanyMember(companyID, userID)
@@ -99,7 +99,7 @@ func GetAccounts(c *gin.Context) {
 			return
 		}
 		if !isMember {
-			c.JSON(http.StatusNotFound, gin.H{"error": "company not found"})
+			c.JSON(http.StatusNotFound, gin.H{"error": utils.Msg(c, "company_not_found")})
 			return
 		}
 
@@ -158,13 +158,13 @@ func writeAccountRows(c *gin.Context, rows *sql.Rows) {
 func GetAccountByID(c *gin.Context) {
 	id := c.Param("id")
 	if !utils.IsValidUUID(id) {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "invalid id format, expected a UUID"})
+		c.JSON(http.StatusBadRequest, gin.H{"error": utils.Msg(c, "invalid_id")})
 		return
 	}
 
 	companyID, err := utils.CompanyIDForAccount(id)
 	if err == sql.ErrNoRows {
-		c.JSON(http.StatusNotFound, gin.H{"error": "account not found"})
+		c.JSON(http.StatusNotFound, gin.H{"error": utils.Msg(c, "account_not_found")})
 		return
 	}
 	if err != nil {
@@ -179,7 +179,7 @@ func GetAccountByID(c *gin.Context) {
 		return
 	}
 	if !isMember {
-		c.JSON(http.StatusNotFound, gin.H{"error": "account not found"})
+		c.JSON(http.StatusNotFound, gin.H{"error": utils.Msg(c, "account_not_found")})
 		return
 	}
 
@@ -194,7 +194,7 @@ func GetAccountByID(c *gin.Context) {
 			&acc.IsActive, &acc.CreatedAt, &acc.UpdatedAt, &acc.CreatedBy, &acc.UpdatedBy)
 
 	if err == sql.ErrNoRows {
-		c.JSON(http.StatusNotFound, gin.H{"error": "account not found"})
+		c.JSON(http.StatusNotFound, gin.H{"error": utils.Msg(c, "account_not_found")})
 		return
 	}
 	if err != nil {
@@ -212,13 +212,13 @@ func GetAccountByID(c *gin.Context) {
 func UpdateAccount(c *gin.Context) {
 	id := c.Param("id")
 	if !utils.IsValidUUID(id) {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "invalid id format, expected a UUID"})
+		c.JSON(http.StatusBadRequest, gin.H{"error": utils.Msg(c, "invalid_id")})
 		return
 	}
 
 	companyID, err := utils.CompanyIDForAccount(id)
 	if err == sql.ErrNoRows {
-		c.JSON(http.StatusNotFound, gin.H{"error": "account not found"})
+		c.JSON(http.StatusNotFound, gin.H{"error": utils.Msg(c, "account_not_found")})
 		return
 	}
 	if err != nil {
@@ -233,13 +233,13 @@ func UpdateAccount(c *gin.Context) {
 		return
 	}
 	if !isMember {
-		c.JSON(http.StatusNotFound, gin.H{"error": "account not found"})
+		c.JSON(http.StatusNotFound, gin.H{"error": utils.Msg(c, "account_not_found")})
 		return
 	}
 
 	var input models.UpdateAccountInput
 	if err := c.ShouldBindJSON(&input); err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		c.JSON(http.StatusBadRequest, gin.H{"error": utils.Msg(c, "invalid_request_data")})
 		return
 	}
 
@@ -255,7 +255,7 @@ func UpdateAccount(c *gin.Context) {
 			return
 		}
 		if !isAdmin {
-			c.JSON(http.StatusForbidden, gin.H{"error": "only an admin of this company can activate or deactivate an account"})
+			c.JSON(http.StatusForbidden, gin.H{"error": utils.Msg(c, "only_admin_activate")})
 			return
 		}
 	}
@@ -273,7 +273,7 @@ func UpdateAccount(c *gin.Context) {
 		&acc.CreatedAt, &acc.UpdatedAt, &acc.CreatedBy, &acc.UpdatedBy)
 
 	if err == sql.ErrNoRows {
-		c.JSON(http.StatusNotFound, gin.H{"error": "account not found"})
+		c.JSON(http.StatusNotFound, gin.H{"error": utils.Msg(c, "account_not_found")})
 		return
 	}
 	if err != nil {
@@ -289,13 +289,13 @@ func UpdateAccount(c *gin.Context) {
 func DeleteAccount(c *gin.Context) {
 	id := c.Param("id")
 	if !utils.IsValidUUID(id) {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "invalid id format, expected a UUID"})
+		c.JSON(http.StatusBadRequest, gin.H{"error": utils.Msg(c, "invalid_id")})
 		return
 	}
 
 	companyID, err := utils.CompanyIDForAccount(id)
 	if err == sql.ErrNoRows {
-		c.JSON(http.StatusNotFound, gin.H{"error": "account not found"})
+		c.JSON(http.StatusNotFound, gin.H{"error": utils.Msg(c, "account_not_found")})
 		return
 	}
 	if err != nil {
@@ -310,7 +310,7 @@ func DeleteAccount(c *gin.Context) {
 		return
 	}
 	if !isMember {
-		c.JSON(http.StatusNotFound, gin.H{"error": "account not found"})
+		c.JSON(http.StatusNotFound, gin.H{"error": utils.Msg(c, "account_not_found")})
 		return
 	}
 
@@ -322,9 +322,9 @@ func DeleteAccount(c *gin.Context) {
 
 	rowsAffected, _ := result.RowsAffected()
 	if rowsAffected == 0 {
-		c.JSON(http.StatusNotFound, gin.H{"error": "account not found"})
+		c.JSON(http.StatusNotFound, gin.H{"error": utils.Msg(c, "account_not_found")})
 		return
 	}
 
-	c.JSON(http.StatusOK, gin.H{"message": "account deleted"})
+	c.JSON(http.StatusOK, gin.H{"message": utils.Msg(c, "account_deleted")})
 }

@@ -18,7 +18,7 @@ import (
 func CreateCompany(c *gin.Context) {
 	var input models.CreateCompanyInput
 	if err := c.ShouldBindJSON(&input); err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		c.JSON(http.StatusBadRequest, gin.H{"error": utils.Msg(c, "invalid_request_data")})
 		return
 	}
 
@@ -95,7 +95,7 @@ func GetCompanies(c *gin.Context) {
 func GetCompanyByID(c *gin.Context) {
 	id := c.Param("id")
 	if !utils.IsValidUUID(id) {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "invalid id format, expected a UUID"})
+		c.JSON(http.StatusBadRequest, gin.H{"error": utils.Msg(c, "invalid_id")})
 		return
 	}
 
@@ -106,7 +106,7 @@ func GetCompanyByID(c *gin.Context) {
 		return
 	}
 	if !isMember {
-		c.JSON(http.StatusNotFound, gin.H{"error": "company not found"})
+		c.JSON(http.StatusNotFound, gin.H{"error": utils.Msg(c, "company_not_found")})
 		return
 	}
 
@@ -117,7 +117,7 @@ func GetCompanyByID(c *gin.Context) {
 		Scan(&comp.ID, &comp.CompanyName, &comp.CreatedAt, &comp.UpdatedAt, &comp.CreatedBy, &comp.UpdatedBy)
 
 	if err == sql.ErrNoRows {
-		c.JSON(http.StatusNotFound, gin.H{"error": "company not found"})
+		c.JSON(http.StatusNotFound, gin.H{"error": utils.Msg(c, "company_not_found")})
 		return
 	}
 	if err != nil {
@@ -132,7 +132,7 @@ func GetCompanyByID(c *gin.Context) {
 func UpdateCompany(c *gin.Context) {
 	id := c.Param("id")
 	if !utils.IsValidUUID(id) {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "invalid id format, expected a UUID"})
+		c.JSON(http.StatusBadRequest, gin.H{"error": utils.Msg(c, "invalid_id")})
 		return
 	}
 
@@ -143,13 +143,13 @@ func UpdateCompany(c *gin.Context) {
 		return
 	}
 	if !isMember {
-		c.JSON(http.StatusNotFound, gin.H{"error": "company not found"})
+		c.JSON(http.StatusNotFound, gin.H{"error": utils.Msg(c, "company_not_found")})
 		return
 	}
 
 	var input models.UpdateCompanyInput
 	if err := c.ShouldBindJSON(&input); err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		c.JSON(http.StatusBadRequest, gin.H{"error": utils.Msg(c, "invalid_request_data")})
 		return
 	}
 
@@ -163,7 +163,7 @@ func UpdateCompany(c *gin.Context) {
 	).Scan(&comp.ID, &comp.CompanyName, &comp.CreatedAt, &comp.UpdatedAt, &comp.CreatedBy, &comp.UpdatedBy)
 
 	if err == sql.ErrNoRows {
-		c.JSON(http.StatusNotFound, gin.H{"error": "company not found"})
+		c.JSON(http.StatusNotFound, gin.H{"error": utils.Msg(c, "company_not_found")})
 		return
 	}
 	if err != nil {
@@ -178,7 +178,7 @@ func UpdateCompany(c *gin.Context) {
 func DeleteCompany(c *gin.Context) {
 	id := c.Param("id")
 	if !utils.IsValidUUID(id) {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "invalid id format, expected a UUID"})
+		c.JSON(http.StatusBadRequest, gin.H{"error": utils.Msg(c, "invalid_id")})
 		return
 	}
 
@@ -189,7 +189,7 @@ func DeleteCompany(c *gin.Context) {
 		return
 	}
 	if !isMember {
-		c.JSON(http.StatusNotFound, gin.H{"error": "company not found"})
+		c.JSON(http.StatusNotFound, gin.H{"error": utils.Msg(c, "company_not_found")})
 		return
 	}
 
@@ -204,11 +204,11 @@ func DeleteCompany(c *gin.Context) {
 
 	rowsAffected, _ := result.RowsAffected()
 	if rowsAffected == 0 {
-		c.JSON(http.StatusNotFound, gin.H{"error": "company not found"})
+		c.JSON(http.StatusNotFound, gin.H{"error": utils.Msg(c, "company_not_found")})
 		return
 	}
 
-	c.JSON(http.StatusOK, gin.H{"message": "company deleted"})
+	c.JSON(http.StatusOK, gin.H{"message": utils.Msg(c, "company_deleted")})
 }
 
 // ListCompanyMembers handles GET /companies/:id/members
@@ -217,7 +217,7 @@ func DeleteCompany(c *gin.Context) {
 func ListCompanyMembers(c *gin.Context) {
 	id := c.Param("id")
 	if !utils.IsValidUUID(id) {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "invalid id format, expected a UUID"})
+		c.JSON(http.StatusBadRequest, gin.H{"error": utils.Msg(c, "invalid_id")})
 		return
 	}
 
@@ -228,7 +228,7 @@ func ListCompanyMembers(c *gin.Context) {
 		return
 	}
 	if !isMember {
-		c.JSON(http.StatusNotFound, gin.H{"error": "company not found"})
+		c.JSON(http.StatusNotFound, gin.H{"error": utils.Msg(c, "company_not_found")})
 		return
 	}
 
@@ -266,7 +266,7 @@ func ListCompanyMembers(c *gin.Context) {
 func AddCompanyMember(c *gin.Context) {
 	id := c.Param("id")
 	if !utils.IsValidUUID(id) {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "invalid id format, expected a UUID"})
+		c.JSON(http.StatusBadRequest, gin.H{"error": utils.Msg(c, "invalid_id")})
 		return
 	}
 
@@ -277,20 +277,20 @@ func AddCompanyMember(c *gin.Context) {
 		return
 	}
 	if !isAdmin {
-		c.JSON(http.StatusForbidden, gin.H{"error": "only an admin of this company can add members"})
+		c.JSON(http.StatusForbidden, gin.H{"error": utils.Msg(c, "only_admin_add_members")})
 		return
 	}
 
 	var input models.AddMemberInput
 	if err := c.ShouldBindJSON(&input); err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		c.JSON(http.StatusBadRequest, gin.H{"error": utils.Msg(c, "invalid_request_data")})
 		return
 	}
 
 	var newUserID string
 	err = config.DB.QueryRow(`SELECT id FROM users WHERE email = $1`, input.Email).Scan(&newUserID)
 	if err == sql.ErrNoRows {
-		c.JSON(http.StatusNotFound, gin.H{"error": "no user found with that email"})
+		c.JSON(http.StatusNotFound, gin.H{"error": utils.Msg(c, "no_user_with_email")})
 		return
 	}
 	if err != nil {
@@ -309,7 +309,7 @@ func AddCompanyMember(c *gin.Context) {
 		return
 	}
 
-	c.JSON(http.StatusCreated, gin.H{"message": "member added"})
+	c.JSON(http.StatusCreated, gin.H{"message": utils.Msg(c, "member_added")})
 }
 
 // RemoveCompanyMember handles DELETE /companies/:id/members/:user_id
@@ -320,7 +320,7 @@ func RemoveCompanyMember(c *gin.Context) {
 	id := c.Param("id")
 	targetUserID := c.Param("user_id")
 	if !utils.IsValidUUID(id) || !utils.IsValidUUID(targetUserID) {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "invalid id format, expected a UUID"})
+		c.JSON(http.StatusBadRequest, gin.H{"error": utils.Msg(c, "invalid_id")})
 		return
 	}
 
@@ -331,7 +331,7 @@ func RemoveCompanyMember(c *gin.Context) {
 		return
 	}
 	if !isAdmin {
-		c.JSON(http.StatusForbidden, gin.H{"error": "only an admin of this company can remove members"})
+		c.JSON(http.StatusForbidden, gin.H{"error": utils.Msg(c, "only_admin_remove_members")})
 		return
 	}
 
@@ -341,7 +341,7 @@ func RemoveCompanyMember(c *gin.Context) {
 		id, targetUserID,
 	).Scan(&targetIsAdmin)
 	if err == sql.ErrNoRows {
-		c.JSON(http.StatusNotFound, gin.H{"error": "that user is not a member of this company"})
+		c.JSON(http.StatusNotFound, gin.H{"error": utils.Msg(c, "not_a_member")})
 		return
 	}
 	if err != nil {
@@ -356,7 +356,7 @@ func RemoveCompanyMember(c *gin.Context) {
 			return
 		}
 		if adminCount <= 1 {
-			c.JSON(http.StatusBadRequest, gin.H{"error": "cannot remove the last admin — promote someone else first"})
+			c.JSON(http.StatusBadRequest, gin.H{"error": utils.Msg(c, "cannot_remove_last_admin")})
 			return
 		}
 	}
@@ -369,7 +369,7 @@ func RemoveCompanyMember(c *gin.Context) {
 		return
 	}
 
-	c.JSON(http.StatusOK, gin.H{"message": "member removed"})
+	c.JSON(http.StatusOK, gin.H{"message": utils.Msg(c, "member_removed")})
 }
 
 // UpdateCompanyMemberRole handles PATCH /companies/:id/members/:user_id
@@ -379,7 +379,7 @@ func UpdateCompanyMemberRole(c *gin.Context) {
 	id := c.Param("id")
 	targetUserID := c.Param("user_id")
 	if !utils.IsValidUUID(id) || !utils.IsValidUUID(targetUserID) {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "invalid id format, expected a UUID"})
+		c.JSON(http.StatusBadRequest, gin.H{"error": utils.Msg(c, "invalid_id")})
 		return
 	}
 
@@ -390,13 +390,13 @@ func UpdateCompanyMemberRole(c *gin.Context) {
 		return
 	}
 	if !isAdmin {
-		c.JSON(http.StatusForbidden, gin.H{"error": "only an admin of this company can change member roles"})
+		c.JSON(http.StatusForbidden, gin.H{"error": utils.Msg(c, "only_admin_change_roles")})
 		return
 	}
 
 	var input models.UpdateMemberRoleInput
 	if err := c.ShouldBindJSON(&input); err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		c.JSON(http.StatusBadRequest, gin.H{"error": utils.Msg(c, "invalid_request_data")})
 		return
 	}
 
@@ -408,7 +408,7 @@ func UpdateCompanyMemberRole(c *gin.Context) {
 			id, targetUserID,
 		).Scan(&targetIsAdmin)
 		if err == sql.ErrNoRows {
-			c.JSON(http.StatusNotFound, gin.H{"error": "that user is not a member of this company"})
+			c.JSON(http.StatusNotFound, gin.H{"error": utils.Msg(c, "not_a_member")})
 			return
 		}
 		if err != nil {
@@ -422,7 +422,7 @@ func UpdateCompanyMemberRole(c *gin.Context) {
 				return
 			}
 			if adminCount <= 1 {
-				c.JSON(http.StatusBadRequest, gin.H{"error": "cannot demote the last admin — promote someone else first"})
+				c.JSON(http.StatusBadRequest, gin.H{"error": utils.Msg(c, "cannot_demote_last_admin")})
 				return
 			}
 		}
@@ -438,9 +438,9 @@ func UpdateCompanyMemberRole(c *gin.Context) {
 	}
 	rowsAffected, _ := result.RowsAffected()
 	if rowsAffected == 0 {
-		c.JSON(http.StatusNotFound, gin.H{"error": "that user is not a member of this company"})
+		c.JSON(http.StatusNotFound, gin.H{"error": utils.Msg(c, "not_a_member")})
 		return
 	}
 
-	c.JSON(http.StatusOK, gin.H{"message": "member role updated"})
+	c.JSON(http.StatusOK, gin.H{"message": utils.Msg(c, "member_role_updated")})
 }

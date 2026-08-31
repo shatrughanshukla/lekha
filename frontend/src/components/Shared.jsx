@@ -1,5 +1,6 @@
 import { useState } from 'react'
 import lekhaLogo from '../assets/lekhaLogo.png'
+import { useT } from '../i18n.jsx'
 
 // ---------------------------------------------------------------------------
 // Icons — small stroke-based line icons, no external icon library.
@@ -75,9 +76,10 @@ export function Money({ value }) {
 }
 
 export function StampBadge({ status, color }) {
+  const { t } = useT()
   return (
     <span className="stamp" style={{ borderColor: color, color }}>
-      {status}
+      {t(`status_${status}`)}
     </span>
   )
 }
@@ -111,8 +113,10 @@ export function Modal({ title, onClose, children }) {
 // accidental deletes.
 // ---------------------------------------------------------------------------
 
-export function DeleteButton({ onConfirm, label = 'Delete' }) {
+export function DeleteButton({ onConfirm, labelKey = 'delete_account_label' }) {
   const [armed, setArmed] = useState(false)
+  const { t } = useT()
+  const label = t(labelKey)
 
   if (armed) {
     return (
@@ -125,7 +129,7 @@ export function DeleteButton({ onConfirm, label = 'Delete' }) {
         }}
         onBlur={() => setArmed(false)}
       >
-        Confirm {label.toLowerCase()}?
+        {t('confirm_delete', { label })}
       </button>
     )
   }
@@ -154,6 +158,7 @@ export function DeleteButton({ onConfirm, label = 'Delete' }) {
 
 export function CopyableID({ id, className = '', chars = 8 }) {
   const [copied, setCopied] = useState(false)
+  const { t } = useT()
 
   async function handleCopy(e) {
     e.stopPropagation()
@@ -168,9 +173,9 @@ export function CopyableID({ id, className = '', chars = 8 }) {
   }
 
   return (
-    <button type="button" className={`copyable-id mono ${className}`} title="Click to copy ID" onClick={handleCopy}>
+    <button type="button" className={`copyable-id mono ${className}`} title={t('click_to_copy')} onClick={handleCopy}>
       {copied ? (
-        <span className="copyable-id-copied"><IconCheck width={12} height={12} /> Copied</span>
+        <span className="copyable-id-copied"><IconCheck width={12} height={12} /> {t('copied')}</span>
       ) : (
         <>{id.slice(0, chars)}… ⧉</>
       )}

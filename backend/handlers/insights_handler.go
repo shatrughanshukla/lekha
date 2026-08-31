@@ -87,7 +87,7 @@ func buildTransferSummary(companyID string) (models.TransferSummary, error) {
 func GetCompanyTransferSummary(c *gin.Context) {
 	companyID := c.Param("id")
 	if !utils.IsValidUUID(companyID) {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "invalid id format, expected a UUID"})
+		c.JSON(http.StatusBadRequest, gin.H{"error": utils.Msg(c, "invalid_id")})
 		return
 	}
 
@@ -98,7 +98,7 @@ func GetCompanyTransferSummary(c *gin.Context) {
 		return
 	}
 	if !isMember {
-		c.JSON(http.StatusNotFound, gin.H{"error": "company not found"})
+		c.JSON(http.StatusNotFound, gin.H{"error": utils.Msg(c, "company_not_found")})
 		return
 	}
 
@@ -164,7 +164,8 @@ func buildOverviewSummary(userID string) (models.OverviewSummary, error) {
 	return overview, nil
 }
 
-const overviewSystemPrompt = `You are given a JSON object of already-computed, correct numeric statistics about a user's companies and their bank transfer activity, across every company they belong to. Write a short, plain-English paragraph (3-5 sentences) summarizing it for a business owner glancing at their dashboard — mention how many companies they have, which company or companies are the most active or hold the most transaction value, and call out any company with no activity yet. Do not invent, estimate, or recalculate any number — only describe the numbers given to you, in your own words. Do not mention JSON or that you were given data. Write only the summary paragraph, no preamble.`
+const overviewSystemPromptEN = `You are given a JSON object of already-computed, correct numeric statistics about a user's companies and their bank transfer activity, across every company they belong to. Write a short, plain-English paragraph (3-5 sentences) summarizing it for a business owner glancing at their dashboard — mention how many companies they have, which company or companies are the most active or hold the most transaction value, and call out any company with no activity yet. Do not invent, estimate, or recalculate any number — only describe the numbers given to you, in your own words. Do not mention JSON or that you were given data. Write only the summary paragraph, no preamble.`
+const overviewSystemPromptHI = `आपको एक कंपनी के उपयोगकर्ता की सभी कंपनियों और उनकी बैंक ट्रांसफर गतिविधि के बारे में पहले से गणना किए गए, सही संख्यात्मक आंकड़ों वाला एक JSON ऑब्जेक्ट दिया गया है। इसे शुद्ध, सरल हिंदी में एक छोटे पैराग्राफ (3-5 वाक्य) में लिखें, जो एक व्यवसाय मालिक अपने डैशबोर्ड पर देखे — बताएं कि उनकी कितनी कंपनियां हैं, कौन सी कंपनी या कंपनियां सबसे सक्रिय हैं या सबसे ज़्यादा राशि की लेन-देन रखती हैं, और किसी भी कंपनी में अभी तक कोई गतिविधि न होने का ज़िक्र करें। दिए गए आंकड़ों में से किसी की भी कल्पना, अनुमान या पुनर्गणना न करें — केवल दिए गए आंकड़ों को अपने शब्दों में बताएं। JSON या डेटा दिए जाने का ज़िक्र न करें। केवल सारांश पैराग्राफ लिखें, कोई प्रस्तावना नहीं। पूरा जवाब हिंदी (देवनागरी लिपि) में लिखें।`
 
 // GetOverviewInsights handles GET /insights/overview
 //
@@ -174,6 +175,7 @@ const overviewSystemPrompt = `You are given a JSON object of already-computed, c
 // them into a paragraph — it never calculates anything itself.
 func GetOverviewInsights(c *gin.Context) {
 	userID := c.GetString("user_id")
+	lang := utils.LangFromContext(c)
 
 	summary, err := buildOverviewSummary(userID)
 	if err != nil {
@@ -183,11 +185,14 @@ func GetOverviewInsights(c *gin.Context) {
 
 	summaryJSON, err := json.Marshal(summary)
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to prepare summary for insight generation"})
+		c.JSON(http.StatusInternalServerError, gin.H{"error": utils.Msg(c, "summary_prep_failed")})
 		return
 	}
 
-	cacheKey := "overview:" + userID
+	// Language is part of the cache key — otherwise a Hindi-preferring
+	// user could be served an English paragraph a teammate generated
+	// first for the exact same underlying numbers, or vice versa.
+	cacheKey := "overview:" + userID + ":" + string(lang)
 	summaryHash := utils.HashSummary(summaryJSON)
 
 	if cached, ok := utils.GetCachedInsight(cacheKey, summaryHash); ok {
@@ -195,7 +200,12 @@ func GetOverviewInsights(c *gin.Context) {
 		return
 	}
 
-	insight, err := utils.CallGemini(overviewSystemPrompt, string(summaryJSON))
+	prompt := overviewSystemPromptEN
+	if lang == utils.LangHI {
+		prompt = overviewSystemPromptHI
+	}
+
+	insight, err := utils.CallGemini(prompt, string(summaryJSON))
 	if err != nil {
 		// The numeric summary is still fully correct and useful even if the
 		// AI paragraph fails — degrade gracefully instead of failing the
@@ -204,7 +214,7 @@ func GetOverviewInsights(c *gin.Context) {
 		// getting stuck repeating a failure message.
 		c.JSON(http.StatusOK, models.OverviewInsightsResponse{
 			Summary: summary,
-			Insight: "AI summary unavailable right now: " + err.Error(),
+			Insight: utils.Msg(c, "ai_summary_unavailable") + err.Error(),
 		})
 		return
 	}
@@ -216,7 +226,8 @@ func GetOverviewInsights(c *gin.Context) {
 	})
 }
 
-const insightsSystemPrompt = `You are given a JSON object of already-computed, correct numeric statistics about a company's bank transfer activity. Write a short, plain-English paragraph (2-4 sentences) summarizing it for a business owner glancing at their dashboard. Do not invent, estimate, or recalculate any number — only describe the numbers given to you, in your own words. Do not mention JSON or that you were given data. Write only the summary paragraph, no preamble.`
+const insightsSystemPromptEN = `You are given a JSON object of already-computed, correct numeric statistics about a company's bank transfer activity. Write a short, plain-English paragraph (2-4 sentences) summarizing it for a business owner glancing at their dashboard. Do not invent, estimate, or recalculate any number — only describe the numbers given to you, in your own words. Do not mention JSON or that you were given data. Write only the summary paragraph, no preamble.`
+const insightsSystemPromptHI = `आपको एक कंपनी की बैंक ट्रांसफर गतिविधि के बारे में पहले से गणना किए गए, सही संख्यात्मक आंकड़ों वाला एक JSON ऑब्जेक्ट दिया गया है। इसे शुद्ध, सरल हिंदी में एक छोटे पैराग्राफ (2-4 वाक्य) में लिखें, जो एक व्यवसाय मालिक अपने डैशबोर्ड पर देखे। दिए गए आंकड़ों में से किसी की भी कल्पना, अनुमान या पुनर्गणना न करें — केवल दिए गए आंकड़ों को अपने शब्दों में बताएं। JSON या डेटा दिए जाने का ज़िक्र न करें। केवल सारांश पैराग्राफ लिखें, कोई प्रस्तावना नहीं। पूरा जवाब हिंदी (देवनागरी लिपि) में लिखें।`
 
 // GetCompanyInsights handles GET /companies/:id/insights
 //
@@ -227,7 +238,7 @@ const insightsSystemPrompt = `You are given a JSON object of already-computed, c
 func GetCompanyInsights(c *gin.Context) {
 	companyID := c.Param("id")
 	if !utils.IsValidUUID(companyID) {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "invalid id format, expected a UUID"})
+		c.JSON(http.StatusBadRequest, gin.H{"error": utils.Msg(c, "invalid_id")})
 		return
 	}
 
@@ -238,7 +249,7 @@ func GetCompanyInsights(c *gin.Context) {
 		return
 	}
 	if !isMember {
-		c.JSON(http.StatusNotFound, gin.H{"error": "company not found"})
+		c.JSON(http.StatusNotFound, gin.H{"error": utils.Msg(c, "company_not_found")})
 		return
 	}
 
@@ -250,11 +261,14 @@ func GetCompanyInsights(c *gin.Context) {
 
 	summaryJSON, err := json.Marshal(summary)
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to prepare summary for insight generation"})
+		c.JSON(http.StatusInternalServerError, gin.H{"error": utils.Msg(c, "summary_prep_failed")})
 		return
 	}
 
-	cacheKey := "company:" + companyID
+	lang := utils.LangFromContext(c)
+	// Language is part of the cache key — see the identical comment in
+	// GetOverviewInsights for why.
+	cacheKey := "company:" + companyID + ":" + string(lang)
 	summaryHash := utils.HashSummary(summaryJSON)
 
 	if cached, ok := utils.GetCachedInsight(cacheKey, summaryHash); ok {
@@ -262,7 +276,12 @@ func GetCompanyInsights(c *gin.Context) {
 		return
 	}
 
-	insight, err := utils.CallGemini(insightsSystemPrompt, string(summaryJSON))
+	prompt := insightsSystemPromptEN
+	if lang == utils.LangHI {
+		prompt = insightsSystemPromptHI
+	}
+
+	insight, err := utils.CallGemini(prompt, string(summaryJSON))
 	if err != nil {
 		// The numeric summary is still fully correct and useful even if the
 		// AI paragraph fails — degrade gracefully instead of failing the
@@ -271,7 +290,7 @@ func GetCompanyInsights(c *gin.Context) {
 		// getting stuck repeating a failure message.
 		c.JSON(http.StatusOK, models.CompanyInsightsResponse{
 			Summary: summary,
-			Insight: "AI summary unavailable right now: " + err.Error(),
+			Insight: utils.Msg(c, "ai_summary_unavailable") + err.Error(),
 		})
 		return
 	}

@@ -24,7 +24,7 @@ import (
 
 // GetUsers handles GET /users
 func GetUsers(c *gin.Context) {
-	rows, err := config.DB.Query(`SELECT id, name, email, profile_picture_url, created_at, updated_at FROM users ORDER BY created_at DESC`)
+	rows, err := config.DB.Query(`SELECT id, name, email, profile_picture_url, preferred_language, created_at, updated_at FROM users ORDER BY created_at DESC`)
 	if err != nil {
 		utils.RespondDBError(c, err)
 		return
@@ -35,7 +35,7 @@ func GetUsers(c *gin.Context) {
 	for rows.Next() {
 		var u models.User
 		var picture sql.NullString
-		if err := rows.Scan(&u.ID, &u.Name, &u.Email, &picture, &u.CreatedAt, &u.UpdatedAt); err != nil {
+		if err := rows.Scan(&u.ID, &u.Name, &u.Email, &picture, &u.PreferredLanguage, &u.CreatedAt, &u.UpdatedAt); err != nil {
 			utils.RespondDBError(c, err)
 			return
 		}
@@ -50,17 +50,17 @@ func GetUsers(c *gin.Context) {
 func GetUserByID(c *gin.Context) {
 	id := c.Param("id")
 	if !utils.IsValidUUID(id) {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "invalid id format, expected a UUID"})
+		c.JSON(http.StatusBadRequest, gin.H{"error": utils.Msg(c, "invalid_id")})
 		return
 	}
 
 	var u models.User
 	var picture sql.NullString
-	query := `SELECT id, name, email, profile_picture_url, created_at, updated_at FROM users WHERE id = $1`
-	err := config.DB.QueryRow(query, id).Scan(&u.ID, &u.Name, &u.Email, &picture, &u.CreatedAt, &u.UpdatedAt)
+	query := `SELECT id, name, email, profile_picture_url, preferred_language, created_at, updated_at FROM users WHERE id = $1`
+	err := config.DB.QueryRow(query, id).Scan(&u.ID, &u.Name, &u.Email, &picture, &u.PreferredLanguage, &u.CreatedAt, &u.UpdatedAt)
 
 	if err == sql.ErrNoRows {
-		c.JSON(http.StatusNotFound, gin.H{"error": "user not found"})
+		c.JSON(http.StatusNotFound, gin.H{"error": utils.Msg(c, "user_not_found")})
 		return
 	}
 	if err != nil {
@@ -73,17 +73,20 @@ func GetUserByID(c *gin.Context) {
 }
 
 // UpdateUser handles PUT /users/:id
-// Only name and/or email are updated — whichever fields are present in the payload.
+// Updates whichever of name / email / preferred_language are present in
+// the payload — profile_picture_url goes through the dedicated
+// upload/remove endpoints instead (see below), since COALESCE here can
+// never be used to explicitly clear a field back to NULL.
 func UpdateUser(c *gin.Context) {
 	id := c.Param("id")
 	if !utils.IsValidUUID(id) {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "invalid id format, expected a UUID"})
+		c.JSON(http.StatusBadRequest, gin.H{"error": utils.Msg(c, "invalid_id")})
 		return
 	}
 
 	var input models.UpdateUserInput
 	if err := c.ShouldBindJSON(&input); err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		c.JSON(http.StatusBadRequest, gin.H{"error": utils.Msg(c, "invalid_request_data")})
 		return
 	}
 
@@ -91,17 +94,18 @@ func UpdateUser(c *gin.Context) {
 		UPDATE users
 		SET name = COALESCE($1, name),
 		    email = COALESCE($2, email),
-		    profile_picture_url = COALESCE($3, profile_picture_url)
-		WHERE id = $4
-		RETURNING id, name, email, profile_picture_url, created_at, updated_at`
+		    profile_picture_url = COALESCE($3, profile_picture_url),
+		    preferred_language = COALESCE($4, preferred_language)
+		WHERE id = $5
+		RETURNING id, name, email, profile_picture_url, preferred_language, created_at, updated_at`
 
 	var u models.User
 	var picture sql.NullString
-	err := config.DB.QueryRow(query, input.Name, input.Email, input.ProfilePictureURL, id).
-		Scan(&u.ID, &u.Name, &u.Email, &picture, &u.CreatedAt, &u.UpdatedAt)
+	err := config.DB.QueryRow(query, input.Name, input.Email, input.ProfilePictureURL, input.PreferredLanguage, id).
+		Scan(&u.ID, &u.Name, &u.Email, &picture, &u.PreferredLanguage, &u.CreatedAt, &u.UpdatedAt)
 
 	if err == sql.ErrNoRows {
-		c.JSON(http.StatusNotFound, gin.H{"error": "user not found"})
+		c.JSON(http.StatusNotFound, gin.H{"error": utils.Msg(c, "user_not_found")})
 		return
 	}
 	if err != nil {
@@ -117,7 +121,7 @@ func UpdateUser(c *gin.Context) {
 func DeleteUser(c *gin.Context) {
 	id := c.Param("id")
 	if !utils.IsValidUUID(id) {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "invalid id format, expected a UUID"})
+		c.JSON(http.StatusBadRequest, gin.H{"error": utils.Msg(c, "invalid_id")})
 		return
 	}
 
@@ -129,11 +133,11 @@ func DeleteUser(c *gin.Context) {
 
 	rowsAffected, _ := result.RowsAffected()
 	if rowsAffected == 0 {
-		c.JSON(http.StatusNotFound, gin.H{"error": "user not found"})
+		c.JSON(http.StatusNotFound, gin.H{"error": utils.Msg(c, "user_not_found")})
 		return
 	}
 
-	c.JSON(http.StatusOK, gin.H{"message": "user deleted"})
+	c.JSON(http.StatusOK, gin.H{"message": utils.Msg(c, "user_deleted")})
 }
 
 // allowedProfilePictureTypes are the image formats we'll accept and their
@@ -153,44 +157,44 @@ const maxProfilePictureBytes = 5 * 1024 * 1024 // 5MB
 func UploadProfilePicture(c *gin.Context) {
 	id := c.Param("id")
 	if !utils.IsValidUUID(id) {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "invalid id format, expected a UUID"})
+		c.JSON(http.StatusBadRequest, gin.H{"error": utils.Msg(c, "invalid_id")})
 		return
 	}
 
 	// A user can only change their own profile picture.
 	if requesterID := c.GetString("user_id"); requesterID != id {
-		c.JSON(http.StatusForbidden, gin.H{"error": "you can only update your own profile picture"})
+		c.JSON(http.StatusForbidden, gin.H{"error": utils.Msg(c, "own_picture_only")})
 		return
 	}
 
 	fileHeader, err := c.FormFile("photo")
 	if err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "no photo file provided (expected form field \"photo\")"})
+		c.JSON(http.StatusBadRequest, gin.H{"error": utils.Msg(c, "no_photo_provided")})
 		return
 	}
 
 	if fileHeader.Size > maxProfilePictureBytes {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "image is too large — max size is 5MB"})
+		c.JSON(http.StatusBadRequest, gin.H{"error": utils.Msg(c, "photo_too_large")})
 		return
 	}
 
 	contentType := fileHeader.Header.Get("Content-Type")
 	ext, ok := allowedProfilePictureTypes[contentType]
 	if !ok {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "unsupported image type — use JPEG, PNG, WEBP, or GIF"})
+		c.JSON(http.StatusBadRequest, gin.H{"error": utils.Msg(c, "unsupported_image_type")})
 		return
 	}
 
 	file, err := fileHeader.Open()
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "could not read uploaded file"})
+		c.JSON(http.StatusInternalServerError, gin.H{"error": utils.Msg(c, "could_not_read_file")})
 		return
 	}
 	defer file.Close()
 
 	data, err := io.ReadAll(file)
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "could not read uploaded file"})
+		c.JSON(http.StatusInternalServerError, gin.H{"error": utils.Msg(c, "could_not_read_file")})
 		return
 	}
 
@@ -202,7 +206,7 @@ func UploadProfilePicture(c *gin.Context) {
 
 	publicURL, err := utils.UploadToSupabaseStorage(objectPath, contentType, data)
 	if err != nil {
-		c.JSON(http.StatusBadGateway, gin.H{"error": err.Error()})
+		c.JSON(http.StatusBadGateway, gin.H{"error": utils.Msg(c, "photo_upload_failed") + err.Error()})
 		return
 	}
 
@@ -214,12 +218,12 @@ func UploadProfilePicture(c *gin.Context) {
 		UPDATE users
 		SET profile_picture_url = $1
 		WHERE id = $2
-		RETURNING id, name, email, profile_picture_url, created_at, updated_at`
+		RETURNING id, name, email, profile_picture_url, preferred_language, created_at, updated_at`
 
 	var u models.User
 	var picture sql.NullString
 	err = config.DB.QueryRow(query, publicURL, id).
-		Scan(&u.ID, &u.Name, &u.Email, &picture, &u.CreatedAt, &u.UpdatedAt)
+		Scan(&u.ID, &u.Name, &u.Email, &picture, &u.PreferredLanguage, &u.CreatedAt, &u.UpdatedAt)
 	if err != nil {
 		utils.RespondDBError(c, err)
 		return
@@ -237,12 +241,12 @@ func UploadProfilePicture(c *gin.Context) {
 func RemoveProfilePicture(c *gin.Context) {
 	id := c.Param("id")
 	if !utils.IsValidUUID(id) {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "invalid id format, expected a UUID"})
+		c.JSON(http.StatusBadRequest, gin.H{"error": utils.Msg(c, "invalid_id")})
 		return
 	}
 
 	if requesterID := c.GetString("user_id"); requesterID != id {
-		c.JSON(http.StatusForbidden, gin.H{"error": "you can only update your own profile picture"})
+		c.JSON(http.StatusForbidden, gin.H{"error": utils.Msg(c, "own_picture_only")})
 		return
 	}
 
@@ -250,14 +254,14 @@ func RemoveProfilePicture(c *gin.Context) {
 		UPDATE users
 		SET profile_picture_url = NULL
 		WHERE id = $1
-		RETURNING id, name, email, profile_picture_url, created_at, updated_at`
+		RETURNING id, name, email, profile_picture_url, preferred_language, created_at, updated_at`
 
 	var u models.User
 	var picture sql.NullString
 	err := config.DB.QueryRow(query, id).
-		Scan(&u.ID, &u.Name, &u.Email, &picture, &u.CreatedAt, &u.UpdatedAt)
+		Scan(&u.ID, &u.Name, &u.Email, &picture, &u.PreferredLanguage, &u.CreatedAt, &u.UpdatedAt)
 	if err == sql.ErrNoRows {
-		c.JSON(http.StatusNotFound, gin.H{"error": "user not found"})
+		c.JSON(http.StatusNotFound, gin.H{"error": utils.Msg(c, "user_not_found")})
 		return
 	}
 	if err != nil {
