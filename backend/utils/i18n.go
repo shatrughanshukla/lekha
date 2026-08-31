@@ -45,6 +45,9 @@ var messages = map[string]map[Lang]string{
 	"invalid_token":             {LangEN: "invalid or expired token", LangHI: "अमान्य या समाप्त हो चुका टोकन"},
 	"token_gen_failed":          {LangEN: "failed to generate token", LangHI: "टोकन बनाने में विफल"},
 	"hash_failed":               {LangEN: "failed to hash password", LangHI: "पासवर्ड हैश करने में विफल"},
+	"incorrect_current_password": {LangEN: "current password is incorrect", LangHI: "मौजूदा पासवर्ड गलत है"},
+	"own_password_only":         {LangEN: "you can only change your own password", LangHI: "आप केवल अपना पासवर्ड ही बदल सकते हैं"},
+	"password_changed":          {LangEN: "password changed", LangHI: "पासवर्ड बदल दिया गया"},
 
 	// -- transfers --
 	"from_account_not_found":       {LangEN: "from_account not found", LangHI: "प्रेषक खाता (from_account) नहीं मिला"},

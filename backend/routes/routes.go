@@ -32,6 +32,7 @@ func RegisterRoutes(r *gin.Engine) {
 		users.DELETE("/:id", handlers.DeleteUser)
 		users.POST("/:id/profile-picture", handlers.UploadProfilePicture)
 		users.DELETE("/:id/profile-picture", handlers.RemoveProfilePicture)
+		users.PATCH("/:id/password", handlers.ChangePassword)
 	}
 
 	companies := protected.Group("/companies")

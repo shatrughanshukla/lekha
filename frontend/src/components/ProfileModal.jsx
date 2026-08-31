@@ -17,6 +17,11 @@ export default function ProfileModal({ token, user, onClose, onUpdated }) {
   const [uploading, setUploading] = useState(false)
   const [saving, setSaving] = useState(false)
   const [error, setError] = useState('')
+  const [currentPassword, setCurrentPassword] = useState('')
+  const [newPassword, setNewPassword] = useState('')
+  const [changingPassword, setChangingPassword] = useState(false)
+  const [passwordError, setPasswordError] = useState('')
+  const [passwordSuccess, setPasswordSuccess] = useState(false)
   const fileInputRef = useRef(null)
   const { t, lang, setLang } = useT()
 
@@ -104,6 +109,23 @@ export default function ProfileModal({ token, user, onClose, onUpdated }) {
     }
   }
 
+  async function handleChangePassword(e) {
+    e.preventDefault()
+    setPasswordError('')
+    setPasswordSuccess(false)
+    setChangingPassword(true)
+    try {
+      await api.changePassword(token, user.id, currentPassword, newPassword)
+      setCurrentPassword('')
+      setNewPassword('')
+      setPasswordSuccess(true)
+    } catch (err) {
+      setPasswordError(err.message)
+    } finally {
+      setChangingPassword(false)
+    }
+  }
+
   return (
     <Modal title={t('your_profile_title')} onClose={onClose}>
       <div className="profile-avatar-row">
@@ -166,6 +188,38 @@ export default function ProfileModal({ token, user, onClose, onUpdated }) {
 
         <button className="btn-primary full" type="submit" disabled={saving}>
           {saving ? t('saving') : t('save_changes')}
+        </button>
+      </form>
+
+      <form className="profile-form profile-password-form" onSubmit={handleChangePassword}>
+        <h3 className="profile-section-title">{t('change_password_title')}</h3>
+        <label>
+          {t('current_password_label')}
+          <input
+            type="password"
+            value={currentPassword}
+            onChange={(e) => setCurrentPassword(e.target.value)}
+            autoComplete="current-password"
+            required
+          />
+        </label>
+        <label>
+          {t('new_password_label')}
+          <input
+            type="password"
+            value={newPassword}
+            onChange={(e) => setNewPassword(e.target.value)}
+            autoComplete="new-password"
+            minLength={8}
+            required
+          />
+        </label>
+
+        {passwordError && <ErrorNote message={passwordError} />}
+        {passwordSuccess && <p className="password-success-note">{t('password_changed_msg')}</p>}
+
+        <button className="btn-ghost full" type="submit" disabled={changingPassword}>
+          {changingPassword ? t('saving') : t('change_password_btn')}
         </button>
       </form>
     </Modal>

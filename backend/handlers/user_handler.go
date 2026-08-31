@@ -10,6 +10,7 @@ import (
 	"time"
 
 	"github.com/gin-gonic/gin"
+	"golang.org/x/crypto/bcrypt"
 
 	"lekha-api/config"
 	"lekha-api/models"
@@ -138,6 +139,59 @@ func DeleteUser(c *gin.Context) {
 	}
 
 	c.JSON(http.StatusOK, gin.H{"message": utils.Msg(c, "user_deleted")})
+}
+
+// ChangePassword handles PATCH /users/:id/password
+// Requires the current password to match before setting a new one — same
+// principle as the profile-picture endpoints: a user can only do this to
+// their own account, verified by comparing c.GetString("user_id") to :id,
+// never trusting the URL alone.
+func ChangePassword(c *gin.Context) {
+	id := c.Param("id")
+	if !utils.IsValidUUID(id) {
+		c.JSON(http.StatusBadRequest, gin.H{"error": utils.Msg(c, "invalid_id")})
+		return
+	}
+
+	if requesterID := c.GetString("user_id"); requesterID != id {
+		c.JSON(http.StatusForbidden, gin.H{"error": utils.Msg(c, "own_password_only")})
+		return
+	}
+
+	var input models.ChangePasswordInput
+	if err := c.ShouldBindJSON(&input); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": utils.Msg(c, "invalid_request_data")})
+		return
+	}
+
+	var currentHash string
+	err := config.DB.QueryRow(`SELECT password_hash FROM users WHERE id = $1`, id).Scan(&currentHash)
+	if err == sql.ErrNoRows {
+		c.JSON(http.StatusNotFound, gin.H{"error": utils.Msg(c, "user_not_found")})
+		return
+	}
+	if err != nil {
+		utils.RespondDBError(c, err)
+		return
+	}
+
+	if err := bcrypt.CompareHashAndPassword([]byte(currentHash), []byte(input.CurrentPassword)); err != nil {
+		c.JSON(http.StatusUnauthorized, gin.H{"error": utils.Msg(c, "incorrect_current_password")})
+		return
+	}
+
+	newHash, err := bcrypt.GenerateFromPassword([]byte(input.NewPassword), bcrypt.DefaultCost)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": utils.Msg(c, "hash_failed")})
+		return
+	}
+
+	if _, err := config.DB.Exec(`UPDATE users SET password_hash = $1 WHERE id = $2`, string(newHash), id); err != nil {
+		utils.RespondDBError(c, err)
+		return
+	}
+
+	c.JSON(http.StatusOK, gin.H{"message": utils.Msg(c, "password_changed")})
 }
 
 // allowedProfilePictureTypes are the image formats we'll accept and their

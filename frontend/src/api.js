@@ -29,6 +29,12 @@ export const api = {
 
   getUser: (token, id) => request(`/users/${id}`, { token }),
   updateUser: (token, id, updates) => request(`/users/${id}`, { method: 'PUT', token, body: updates }),
+  changePassword: (token, id, currentPassword, newPassword) =>
+    request(`/users/${id}/password`, {
+      method: 'PATCH',
+      token,
+      body: { current_password: currentPassword, new_password: newPassword },
+    }),
 
   // Multipart upload — bypasses the JSON `request` helper above since this
   // needs a FormData body and must NOT set a JSON Content-Type header (the

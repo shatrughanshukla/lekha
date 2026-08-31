@@ -141,6 +141,11 @@ const DICTIONARY = {
     saving: 'Saving…',
     save_changes: 'Save changes',
     language_label: 'Language',
+    change_password_title: 'Change password',
+    current_password_label: 'Current password',
+    new_password_label: 'New password (min. 8 characters)',
+    change_password_btn: 'Change password',
+    password_changed_msg: 'Password changed.',
     lang_name_en: 'English',
     lang_name_hi: 'हिंदी (Hindi)',
 
@@ -278,6 +283,11 @@ const DICTIONARY = {
     saving: 'सहेजा जा रहा है…',
     save_changes: 'बदलाव सहेजें',
     language_label: 'भाषा',
+    change_password_title: 'पासवर्ड बदलें',
+    current_password_label: 'मौजूदा पासवर्ड',
+    new_password_label: 'नया पासवर्ड (कम से कम 8 अक्षर)',
+    change_password_btn: 'पासवर्ड बदलें',
+    password_changed_msg: 'पासवर्ड बदल दिया गया।',
     lang_name_en: 'English (अंग्रेज़ी)',
     lang_name_hi: 'हिंदी',
 
