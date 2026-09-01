@@ -30,6 +30,8 @@ var messages = map[string]map[Lang]string{
 	"invalid_status":        {LangEN: "invalid status value", LangHI: "अमान्य स्थिति (status) मान"},
 	"invalid_request_data":  {LangEN: "invalid request data", LangHI: "अमान्य अनुरोध डेटा"},
 	"invalid_value_request": {LangEN: "invalid value in request", LangHI: "अनुरोध में अमान्य मान"},
+	"too_many_signin_attempts": {LangEN: "too many sign-in attempts — please wait a few minutes and try again", LangHI: "बहुत अधिक साइन-इन प्रयास — कृपया कुछ मिनट रुककर पुनः प्रयास करें"},
+	"too_many_signup_attempts": {LangEN: "too many attempts — please wait a few minutes and try again", LangHI: "बहुत अधिक प्रयास — कृपया कुछ मिनट रुककर पुनः प्रयास करें"},
 
 	// -- not found --
 	"company_not_found":  {LangEN: "company not found", LangHI: "कंपनी नहीं मिली"},
@@ -61,6 +63,7 @@ var messages = map[string]map[Lang]string{
 	"only_completed_can_reverse":   {LangEN: "only a completed transfer can be proposed for reversal", LangHI: "केवल पूर्ण हो चुके ट्रांसफर को ही उलटने के लिए प्रस्तावित किया जा सकता है"},
 	"proposal_already_pending":     {LangEN: "there is already a proposal awaiting a decision on this transfer", LangHI: "इस ट्रांसफर पर पहले से ही एक प्रस्ताव निर्णय की प्रतीक्षा में है"},
 	"already_proposed_by_you":      {LangEN: "you already proposed this change — waiting on the other company to respond", LangHI: "आपने पहले ही यह बदलाव प्रस्तावित किया है — दूसरी कंपनी के जवाब का इंतज़ार है"},
+	"only_proposer_can_withdraw":   {LangEN: "only the company that proposed this can withdraw it", LangHI: "जिस कंपनी ने यह प्रस्तावित किया है केवल वही इसे वापस ले सकती है"},
 	"nothing_awaiting_approval":    {LangEN: "there is nothing awaiting approval on this transfer", LangHI: "इस ट्रांसफर पर स्वीकृति के लिए कुछ भी लंबित नहीं है"},
 
 	// -- accounts --
@@ -107,6 +110,9 @@ var messages = map[string]map[Lang]string{
 // signin, before there's a user row to read a preference from) or if
 // something went wrong resolving it.
 func LangFromContext(c *gin.Context) Lang {
+	if c == nil {
+		return LangEN
+	}
 	if v, ok := c.Get("lang"); ok {
 		if l, ok := v.(Lang); ok {
 			return l

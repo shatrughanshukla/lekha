@@ -3,6 +3,7 @@ package handlers
 import (
 	"database/sql"
 	"net/http"
+	"time"
 
 	"github.com/gin-gonic/gin"
 	"golang.org/x/crypto/bcrypt"
@@ -12,6 +13,17 @@ import (
 	"lekha-api/utils"
 )
 
+// signInLimiter throttles by IP+email together, not IP alone — this
+// specifically slows down brute-forcing ONE account's password, without
+// punishing a shared IP (office network, NAT) where many people might
+// legitimately be signing into DIFFERENT accounts around the same time.
+var signInLimiter = utils.NewRateLimiter(5, 15*time.Minute)
+
+// signUpLimiter throttles by IP alone — there's no existing account to key
+// against yet, and the thing being prevented here is mass account
+// creation from one source, not brute-forcing a specific target.
+var signUpLimiter = utils.NewRateLimiter(10, time.Hour)
+
 // SignUp handles POST /api/v1/auth/signup
 // Creates a new user and immediately returns a JWT, so the frontend can
 // log the user straight in without a separate signin call. There is no
@@ -19,6 +31,11 @@ import (
 // request succeeds), so any error here is in English by default — see
 // SignIn below for how a RETURNING user's language is honored instead.
 func SignUp(c *gin.Context) {
+	if !signUpLimiter.Allow(c.ClientIP()) {
+		c.JSON(http.StatusTooManyRequests, gin.H{"error": utils.Msg(c, "too_many_signup_attempts")})
+		return
+	}
+
 	var input models.SignUpInput
 	if err := c.ShouldBindJSON(&input); err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": utils.Msg(c, "invalid_request_data")})
@@ -58,11 +75,39 @@ func SignUp(c *gin.Context) {
 	c.JSON(http.StatusCreated, models.AuthResponse{Token: token, User: user})
 }
 
-// SignIn handles POST /api/v1/auth/signin
+// RefreshToken handles POST /auth/refresh
+// Issues a fresh 24h token for the already-authenticated caller. This is a
+// PROTECTED route (goes through AuthRequired), so it requires a still-valid
+// token to call — an expired token can't be refreshed this way, only a
+// live one extended. A session can only ever be as long-lived as someone
+// actively using the app; letting it sit unused for 24h+ still requires a
+// real sign-in again.
+func RefreshToken(c *gin.Context) {
+	userID := c.GetString("user_id")
+	email := c.GetString("user_email")
+
+	token, err := utils.GenerateToken(userID, email)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": utils.Msg(c, "token_gen_failed")})
+		return
+	}
+
+	c.JSON(http.StatusOK, gin.H{"token": token})
+}
 func SignIn(c *gin.Context) {
 	var input models.SignInInput
 	if err := c.ShouldBindJSON(&input); err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": utils.Msg(c, "invalid_request_data")})
+		return
+	}
+
+	// Checked before touching the database at all — protects the DB from
+	// load too, not just the account from guessing. This message is always
+	// English: we don't know which user (if any) is behind this attempt
+	// yet, so there's no language preference to look up.
+	rateLimitKey := c.ClientIP() + ":" + input.Email
+	if !signInLimiter.Allow(rateLimitKey) {
+		c.JSON(http.StatusTooManyRequests, gin.H{"error": utils.Msg(c, "too_many_signin_attempts")})
 		return
 	}
 

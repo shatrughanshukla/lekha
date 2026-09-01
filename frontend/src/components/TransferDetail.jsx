@@ -44,6 +44,20 @@ export default function TransferDetail({ token, user, company, transferId, onClo
     }
   }
 
+  async function withdrawProposal() {
+    setActing(true)
+    setError('')
+    try {
+      const updated = await api.withdrawProposal(token, transferId)
+      setT((prev) => ({ ...prev, ...updated }))
+      onChanged?.()
+    } catch (err) {
+      setError(err.message)
+    } finally {
+      setActing(false)
+    }
+  }
+
   return (
     <Modal title={tr('transfer_details_title')} onClose={onClose}>
       <ErrorNote message={error} />
@@ -97,7 +111,7 @@ export default function TransferDetail({ token, user, company, transferId, onClo
             </span>
           </div>
 
-          <ApprovalArea t={t} company={company} acting={acting} onRespond={respond} onPropose={proposeReversal} />
+          <ApprovalArea t={t} company={company} acting={acting} onRespond={respond} onPropose={proposeReversal} onWithdraw={withdrawProposal} />
         </div>
       )}
     </Modal>
@@ -108,7 +122,7 @@ export default function TransferDetail({ token, user, company, transferId, onClo
 // transfer right now — approving/rejecting a brand-new request, waiting on
 // the other side, proposing a reversal, or nothing at all once a transfer
 // has reached a terminal state (CANCELLED/REVERSED).
-function ApprovalArea({ t, company, acting, onRespond, onPropose }) {
+function ApprovalArea({ t, company, acting, onRespond, onPropose, onWithdraw }) {
   const { t: tr } = useT()
   const isSenderSide = company.id === t.company_id
 
@@ -146,6 +160,9 @@ function ApprovalArea({ t, company, acting, onRespond, onPropose }) {
           <p className="panel-hint">
             {tr('proposed_reversal_msg', { who: t.proposed_by_name || tr('you_proposed_word') })}
           </p>
+          <button className="btn-ghost small" disabled={acting} onClick={onWithdraw}>
+            {acting ? '…' : tr('withdraw_proposal')}
+          </button>
         </div>
       )
     }

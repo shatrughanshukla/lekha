@@ -24,6 +24,38 @@ export default function App() {
     localStorage.setItem('lekha_theme', theme)
   }, [theme])
 
+  // Silently extends the session while it's actively being used, so an
+  // open tab doesn't get logged out mid-day just because the token turned
+  // 24h old. An abandoned/closed tab still lets the token expire normally —
+  // this only refreshes while something is actually running.
+  useEffect(() => {
+    if (!token) return
+
+    async function refresh() {
+      try {
+        const { token: freshToken } = await api.refreshToken(token)
+        localStorage.setItem('lekha_token', freshToken)
+        setToken(freshToken)
+      } catch {
+        // Token may already be expired, or the network's down — fail
+        // quietly. If it's really expired, the next real request 401s and
+        // the person just signs in again, same as before this existed.
+      }
+    }
+
+    const interval = setInterval(refresh, 20 * 60 * 1000) // every 20 minutes
+    function onVisible() {
+      if (document.visibilityState === 'visible') refresh()
+    }
+    document.addEventListener('visibilitychange', onVisible)
+
+    return () => {
+      clearInterval(interval)
+      document.removeEventListener('visibilitychange', onVisible)
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [token])
+
   function toggleTheme() {
     setTheme((t) => (t === 'dark' ? 'light' : 'dark'))
   }

@@ -112,53 +112,65 @@ func GetCompanyTransferSummary(c *gin.Context) {
 }
 
 // buildOverviewSummary computes, for every company the given user belongs
-// to, that company's transfer activity — reusing buildTransferSummary (the
-// same sender-OR-receiver rule already used for a single company) rather
-// than re-deriving the join logic, so the two never drift out of sync.
+// to, that company's transfer activity — in a single query rather than one
+// buildTransferSummary call per company (which was 1+3N round trips).
+//
+// The join here needs care: a company can own several accounts, so a naive
+// `JOIN accounts fa ... JOIN accounts ta ...` would create a cross product
+// per company and count each transfer multiple times. Instead, each
+// transfer is expressed as up to two (company_id, transfer_id) pairs — one
+// for the sender's company, one for the receiver's — via UNION (not UNION
+// ALL), which naturally collapses the two into one row when a transfer is
+// internal to a single company (both branches produce the identical row),
+// and keeps them as two separate rows when sender and receiver are
+// different companies. That exactly matches what buildTransferSummary's
+// "fa.company_id = $1 OR ta.company_id = $1" computes per company, just
+// for every company at once.
 func buildOverviewSummary(userID string) (models.OverviewSummary, error) {
 	overview := models.OverviewSummary{Companies: []models.CompanyActivity{}}
 
 	rows, err := config.DB.Query(`
-		SELECT co.id, co.company_name
-		FROM company co
-		JOIN company_members cm ON cm.company_id = co.id
-		WHERE cm.user_id = $1
-		ORDER BY co.created_at DESC`, userID)
+		WITH my_companies AS (
+			SELECT co.id, co.company_name, co.created_at
+			FROM company co
+			JOIN company_members cm ON cm.company_id = co.id
+			WHERE cm.user_id = $1
+		),
+		transfer_company_pairs AS (
+			SELECT fa.company_id AS company_id, t.id AS transfer_id, t.amount AS amount
+			FROM transfers t
+			JOIN accounts fa ON fa.id = t.from_account_id
+			UNION
+			SELECT ta.company_id AS company_id, t.id AS transfer_id, t.amount AS amount
+			FROM transfers t
+			JOIN accounts ta ON ta.id = t.to_account_id
+		)
+		SELECT mc.id, mc.company_name,
+		       COUNT(tcp.transfer_id) AS total_transfers,
+		       COALESCE(SUM(tcp.amount), 0) AS total_amount
+		FROM my_companies mc
+		LEFT JOIN transfer_company_pairs tcp ON tcp.company_id = mc.id
+		GROUP BY mc.id, mc.company_name, mc.created_at
+		ORDER BY mc.created_at DESC`, userID)
 	if err != nil {
 		return overview, err
 	}
 	defer rows.Close()
 
-	type companyRow struct{ id, name string }
-	var companyRows []companyRow
 	for rows.Next() {
-		var cr companyRow
-		if err := rows.Scan(&cr.id, &cr.name); err != nil {
+		var ca models.CompanyActivity
+		if err := rows.Scan(&ca.CompanyID, &ca.CompanyName, &ca.TotalTransfers, &ca.TotalAmount); err != nil {
 			return overview, err
 		}
-		companyRows = append(companyRows, cr)
+		overview.TotalCompanies++
+		if ca.TotalTransfers > 0 {
+			overview.CompaniesWithActivity++
+		}
+		overview.TotalAmountAllCompanies += ca.TotalAmount
+		overview.Companies = append(overview.Companies, ca)
 	}
 	if err := rows.Err(); err != nil {
 		return overview, err
-	}
-
-	overview.TotalCompanies = len(companyRows)
-
-	for _, cr := range companyRows {
-		txSummary, err := buildTransferSummary(cr.id)
-		if err != nil {
-			return overview, err
-		}
-		if txSummary.TotalTransfers > 0 {
-			overview.CompaniesWithActivity++
-		}
-		overview.TotalAmountAllCompanies += txSummary.TotalAmount
-		overview.Companies = append(overview.Companies, models.CompanyActivity{
-			CompanyID:      cr.id,
-			CompanyName:    cr.name,
-			TotalTransfers: txSummary.TotalTransfers,
-			TotalAmount:    txSummary.TotalAmount,
-		})
 	}
 
 	return overview, nil

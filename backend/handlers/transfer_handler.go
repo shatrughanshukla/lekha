@@ -497,6 +497,104 @@ func ProposeTransferStatus(c *gin.Context) {
 	c.JSON(http.StatusOK, t)
 }
 
+// WithdrawProposal handles DELETE /transfers/:id/propose
+//
+// Lets the company that proposed a reversal take it back before the other
+// side has responded. Only the proposer's own company may do this — the
+// other side already has its own way to say no (reject via RespondToTransfer).
+// Nothing about the balance changes either way: a proposal never moved
+// money by itself, so withdrawing one doesn't need to either.
+func WithdrawProposal(c *gin.Context) {
+	id := c.Param("id")
+	if !utils.IsValidUUID(id) {
+		c.JSON(http.StatusBadRequest, gin.H{"error": utils.Msg(c, "invalid_id")})
+		return
+	}
+
+	fromCompanyID, toCompanyID, err := utils.PartyCompanyIDsForTransfer(id)
+	if err == sql.ErrNoRows {
+		c.JSON(http.StatusNotFound, gin.H{"error": utils.Msg(c, "transfer_not_found")})
+		return
+	}
+	if err != nil {
+		utils.RespondDBError(c, err)
+		return
+	}
+
+	userID := c.GetString("user_id")
+	isSenderMember, err := utils.IsCompanyMember(fromCompanyID, userID)
+	if err != nil {
+		utils.RespondDBError(c, err)
+		return
+	}
+	isReceiverMember, err := utils.IsCompanyMember(toCompanyID, userID)
+	if err != nil {
+		utils.RespondDBError(c, err)
+		return
+	}
+	if !isSenderMember && !isReceiverMember {
+		c.JSON(http.StatusNotFound, gin.H{"error": utils.Msg(c, "transfer_not_found")})
+		return
+	}
+
+	tx, err := config.DB.Begin()
+	if err != nil {
+		utils.RespondDBError(c, err)
+		return
+	}
+	defer tx.Rollback()
+
+	var currentStatus string
+	var pendingStatus, proposedByCompanyID sql.NullString
+	err = tx.QueryRow(
+		`SELECT status, pending_status, proposed_by_company_id FROM transfers WHERE id = $1 FOR UPDATE`,
+		id,
+	).Scan(&currentStatus, &pendingStatus, &proposedByCompanyID)
+	if err == sql.ErrNoRows {
+		c.JSON(http.StatusNotFound, gin.H{"error": utils.Msg(c, "transfer_not_found")})
+		return
+	}
+	if err != nil {
+		utils.RespondDBError(c, err)
+		return
+	}
+
+	if currentStatus != "COMPLETED" || !pendingStatus.Valid {
+		c.JSON(http.StatusBadRequest, gin.H{"error": utils.Msg(c, "nothing_awaiting_approval")})
+		return
+	}
+
+	requesterCompanyID := fromCompanyID
+	if isReceiverMember {
+		requesterCompanyID = toCompanyID
+	}
+	if !proposedByCompanyID.Valid || proposedByCompanyID.String != requesterCompanyID {
+		c.JSON(http.StatusForbidden, gin.H{"error": utils.Msg(c, "only_proposer_can_withdraw")})
+		return
+	}
+
+	row := tx.QueryRow(`
+		UPDATE transfers
+		SET pending_status = NULL, proposed_by_company_id = NULL, proposed_by_user_id = NULL
+		WHERE id = $1
+		RETURNING id, company_id, transfer_type, transaction_date, from_account_id, to_account_id,
+		          amount, status, transfer_notes, created_by_user, updated_by_user, created_at, updated_at,
+		          pending_status, proposed_by_company_id, proposed_by_user_id`,
+		id)
+	t, err := scanBareTransferRow(row)
+	if err != nil {
+		utils.RespondDBError(c, err)
+		return
+	}
+
+	if err := tx.Commit(); err != nil {
+		utils.RespondDBError(c, err)
+		return
+	}
+
+	c.JSON(http.StatusOK, t)
+}
+
 // scanBareTransferRow scans the columns returned by an UPDATE ... RETURNING
 // in this file — no joined display fields, just the real columns. Used
 // inside a transaction where we don't want to run the full join query again.

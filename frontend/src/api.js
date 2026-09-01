@@ -26,6 +26,7 @@ export const api = {
     request('/auth/signup', { method: 'POST', body: { name, email, password } }),
   signIn: (email, password) =>
     request('/auth/signin', { method: 'POST', body: { email, password } }),
+  refreshToken: (token) => request('/auth/refresh', { method: 'POST', token }),
 
   getUser: (token, id) => request(`/users/${id}`, { token }),
   updateUser: (token, id, updates) => request(`/users/${id}`, { method: 'PUT', token, body: updates }),
@@ -99,6 +100,9 @@ export const api = {
   // companies involved (see transfer_handler.go).
   proposeTransferReversal: (token, id, userId) =>
     request(`/transfers/${id}/propose`, { method: 'PATCH', token, body: { status: 'REVERSED', updated_by_user: userId } }),
+  // Lets the company that proposed a reversal take it back before the
+  // other side has responded.
+  withdrawProposal: (token, id) => request(`/transfers/${id}/propose`, { method: 'DELETE', token }),
   // Answers whatever is currently awaiting a decision on this transfer —
   // a brand-new PENDING transfer, or a pending reversal proposal.
   respondToTransfer: (token, id, approve, userId) =>

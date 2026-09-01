@@ -24,6 +24,8 @@ func RegisterRoutes(r *gin.Engine) {
 	protected := api.Group("")
 	protected.Use(middleware.AuthRequired())
 
+	protected.POST("/auth/refresh", handlers.RefreshToken) // extends an already-valid session; can't resurrect an expired one
+
 	users := protected.Group("/users")
 	{
 		users.GET("", handlers.GetUsers)
@@ -70,6 +72,7 @@ func RegisterRoutes(r *gin.Engine) {
 		transfers.GET("", handlers.GetTransfers) // supports ?company_id= ?account_id= ?status=
 		transfers.GET("/:id", handlers.GetTransferByID)
 		transfers.PATCH("/:id/propose", handlers.ProposeTransferStatus)  // propose reversing a COMPLETED transfer
+		transfers.DELETE("/:id/propose", handlers.WithdrawProposal)      // proposer takes back their own pending proposal
 		transfers.PATCH("/:id/approval", handlers.RespondToTransfer)     // approve/reject whatever is awaiting a decision
 		transfers.POST("/search", handlers.SearchTransfers)              // natural language search (AI layer)
 	}

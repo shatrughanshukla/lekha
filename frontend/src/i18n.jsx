@@ -130,6 +130,7 @@ const DICTIONARY = {
     other_wants_reverse: 'The other company wants to reverse this transfer.',
     approve_reversal: 'Approve reversal',
     propose_reversing: 'Propose reversing this transfer',
+    withdraw_proposal: 'Withdraw proposal',
 
     // -- profile modal --
     your_profile_title: 'Your profile',
@@ -273,6 +274,7 @@ const DICTIONARY = {
     other_wants_reverse: 'दूसरी कंपनी इस ट्रांसफर को उलटना चाहती है।',
     approve_reversal: 'उलटाव स्वीकृत करें',
     propose_reversing: 'इस ट्रांसफर को उलटने का प्रस्ताव रखें',
+    withdraw_proposal: 'प्रस्ताव वापस लें',
 
     your_profile_title: 'आपकी प्रोफ़ाइल',
     invalid_image_type: 'कृपया JPEG, PNG, WEBP, या GIF छवि चुनें।',
