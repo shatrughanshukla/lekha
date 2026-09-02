@@ -27,6 +27,11 @@ export const api = {
   signIn: (email, password) =>
     request('/auth/signin', { method: 'POST', body: { email, password } }),
   refreshToken: (token) => request('/auth/refresh', { method: 'POST', token }),
+  forgotPassword: (email) => request('/auth/forgot-password', { method: 'POST', body: { email } }),
+  resetPassword: (resetToken, newPassword) =>
+    request('/auth/reset-password', { method: 'POST', body: { token: resetToken, new_password: newPassword } }),
+  verifyEmail: (verifyToken) => request('/auth/verify-email', { method: 'POST', body: { token: verifyToken } }),
+  resendVerificationEmail: (token) => request('/auth/resend-verification', { method: 'POST', token }),
 
   getUser: (token, id) => request(`/users/${id}`, { token }),
   updateUser: (token, id, updates) => request(`/users/${id}`, { method: 'PUT', token, body: updates }),

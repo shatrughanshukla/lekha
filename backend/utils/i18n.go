@@ -50,6 +50,13 @@ var messages = map[string]map[Lang]string{
 	"incorrect_current_password": {LangEN: "current password is incorrect", LangHI: "मौजूदा पासवर्ड गलत है"},
 	"own_password_only":         {LangEN: "you can only change your own password", LangHI: "आप केवल अपना पासवर्ड ही बदल सकते हैं"},
 	"password_changed":          {LangEN: "password changed", LangHI: "पासवर्ड बदल दिया गया"},
+	"reset_link_sent":           {LangEN: "if that email exists, a password reset link has been sent", LangHI: "अगर वह ईमेल मौजूद है, तो एक पासवर्ड रीसेट लिंक भेजा गया है"},
+	"invalid_or_expired_token":  {LangEN: "this link is invalid or has expired — please request a new one", LangHI: "यह लिंक अमान्य है या समाप्त हो गया है — कृपया एक नया अनुरोध करें"},
+	"password_reset_success":    {LangEN: "password reset — you can now sign in with your new password", LangHI: "पासवर्ड रीसेट हो गया — अब आप अपने नए पासवर्ड से साइन इन कर सकते हैं"},
+	"email_verified_success":    {LangEN: "email verified", LangHI: "ईमेल सत्यापित हो गया"},
+	"verification_email_sent":   {LangEN: "verification email sent", LangHI: "सत्यापन ईमेल भेज दिया गया"},
+	"email_already_verified":    {LangEN: "this email is already verified", LangHI: "यह ईमेल पहले से ही सत्यापित है"},
+	"email_send_failed":         {LangEN: "could not send email right now — please try again in a moment", LangHI: "अभी ईमेल नहीं भेजा जा सका — कृपया थोड़ी देर में पुनः प्रयास करें"},
 
 	// -- transfers --
 	"from_account_not_found":       {LangEN: "from_account not found", LangHI: "प्रेषक खाता (from_account) नहीं मिला"},

@@ -18,13 +18,17 @@ func RegisterRoutes(r *gin.Engine) {
 	{
 		auth.POST("/signup", handlers.SignUp)
 		auth.POST("/signin", handlers.SignIn)
+		auth.POST("/forgot-password", handlers.ForgotPassword) // always responds the same way, whether or not the email exists
+		auth.POST("/reset-password", handlers.ResetPassword)
+		auth.POST("/verify-email", handlers.VerifyEmail)
 	}
 
 	// Everything below this line requires Authorization: Bearer <token>
 	protected := api.Group("")
 	protected.Use(middleware.AuthRequired())
 
-	protected.POST("/auth/refresh", handlers.RefreshToken) // extends an already-valid session; can't resurrect an expired one
+	protected.POST("/auth/refresh", handlers.RefreshToken)                          // extends an already-valid session; can't resurrect an expired one
+	protected.POST("/auth/resend-verification", handlers.ResendVerificationEmail)   // always sends to the caller's own address
 
 	users := protected.Group("/users")
 	{

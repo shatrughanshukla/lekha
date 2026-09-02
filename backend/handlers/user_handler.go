@@ -22,10 +22,14 @@ import (
 // does the same insert but also returns a JWT so a new user is logged in
 // immediately. Keeping a second, separate "create user" path around would
 // just be two ways to do the same thing.
+//
+// userColumns and scanUserRow (shared with auth_handler.go) keep every
+// query that returns a User in sync — add a column once, in one place,
+// rather than hunting down every SELECT/RETURNING list by hand.
 
 // GetUsers handles GET /users
 func GetUsers(c *gin.Context) {
-	rows, err := config.DB.Query(`SELECT id, name, email, profile_picture_url, preferred_language, created_at, updated_at FROM users ORDER BY created_at DESC`)
+	rows, err := config.DB.Query(`SELECT ` + userColumns + ` FROM users ORDER BY created_at DESC`)
 	if err != nil {
 		utils.RespondDBError(c, err)
 		return
@@ -36,7 +40,7 @@ func GetUsers(c *gin.Context) {
 	for rows.Next() {
 		var u models.User
 		var picture sql.NullString
-		if err := rows.Scan(&u.ID, &u.Name, &u.Email, &picture, &u.PreferredLanguage, &u.CreatedAt, &u.UpdatedAt); err != nil {
+		if err := scanUserRow(rows, &u, &picture); err != nil {
 			utils.RespondDBError(c, err)
 			return
 		}
@@ -57,8 +61,8 @@ func GetUserByID(c *gin.Context) {
 
 	var u models.User
 	var picture sql.NullString
-	query := `SELECT id, name, email, profile_picture_url, preferred_language, created_at, updated_at FROM users WHERE id = $1`
-	err := config.DB.QueryRow(query, id).Scan(&u.ID, &u.Name, &u.Email, &picture, &u.PreferredLanguage, &u.CreatedAt, &u.UpdatedAt)
+	row := config.DB.QueryRow(`SELECT `+userColumns+` FROM users WHERE id = $1`, id)
+	err := scanUserRow(row, &u, &picture)
 
 	if err == sql.ErrNoRows {
 		c.JSON(http.StatusNotFound, gin.H{"error": utils.Msg(c, "user_not_found")})
@@ -78,6 +82,11 @@ func GetUserByID(c *gin.Context) {
 // the payload — profile_picture_url goes through the dedicated
 // upload/remove endpoints instead (see below), since COALESCE here can
 // never be used to explicitly clear a field back to NULL.
+//
+// Known simplification: changing email does NOT reset email_verified back
+// to false. A user could change their email to one they don't own and
+// keep showing as "verified" for an address that isn't actually theirs.
+// Re-verification-on-email-change isn't implemented yet.
 func UpdateUser(c *gin.Context) {
 	id := c.Param("id")
 	if !utils.IsValidUUID(id) {
@@ -98,12 +107,12 @@ func UpdateUser(c *gin.Context) {
 		    profile_picture_url = COALESCE($3, profile_picture_url),
 		    preferred_language = COALESCE($4, preferred_language)
 		WHERE id = $5
-		RETURNING id, name, email, profile_picture_url, preferred_language, created_at, updated_at`
+		RETURNING ` + userColumns
 
 	var u models.User
 	var picture sql.NullString
-	err := config.DB.QueryRow(query, input.Name, input.Email, input.ProfilePictureURL, input.PreferredLanguage, id).
-		Scan(&u.ID, &u.Name, &u.Email, &picture, &u.PreferredLanguage, &u.CreatedAt, &u.UpdatedAt)
+	row := config.DB.QueryRow(query, input.Name, input.Email, input.ProfilePictureURL, input.PreferredLanguage, id)
+	err := scanUserRow(row, &u, &picture)
 
 	if err == sql.ErrNoRows {
 		c.JSON(http.StatusNotFound, gin.H{"error": utils.Msg(c, "user_not_found")})
@@ -272,13 +281,12 @@ func UploadProfilePicture(c *gin.Context) {
 		UPDATE users
 		SET profile_picture_url = $1
 		WHERE id = $2
-		RETURNING id, name, email, profile_picture_url, preferred_language, created_at, updated_at`
+		RETURNING ` + userColumns
 
 	var u models.User
 	var picture sql.NullString
-	err = config.DB.QueryRow(query, publicURL, id).
-		Scan(&u.ID, &u.Name, &u.Email, &picture, &u.PreferredLanguage, &u.CreatedAt, &u.UpdatedAt)
-	if err != nil {
+	row := config.DB.QueryRow(query, publicURL, id)
+	if err := scanUserRow(row, &u, &picture); err != nil {
 		utils.RespondDBError(c, err)
 		return
 	}
@@ -308,12 +316,12 @@ func RemoveProfilePicture(c *gin.Context) {
 		UPDATE users
 		SET profile_picture_url = NULL
 		WHERE id = $1
-		RETURNING id, name, email, profile_picture_url, preferred_language, created_at, updated_at`
+		RETURNING ` + userColumns
 
 	var u models.User
 	var picture sql.NullString
-	err := config.DB.QueryRow(query, id).
-		Scan(&u.ID, &u.Name, &u.Email, &picture, &u.PreferredLanguage, &u.CreatedAt, &u.UpdatedAt)
+	row := config.DB.QueryRow(query, id)
+	err := scanUserRow(row, &u, &picture)
 	if err == sql.ErrNoRows {
 		c.JSON(http.StatusNotFound, gin.H{"error": utils.Msg(c, "user_not_found")})
 		return

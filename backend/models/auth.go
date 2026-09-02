@@ -21,6 +21,22 @@ type ChangePasswordInput struct {
 	NewPassword     string `json:"new_password" binding:"required,min=8"`
 }
 
+// ForgotPasswordInput is the payload accepted by POST /auth/forgot-password.
+type ForgotPasswordInput struct {
+	Email string `json:"email" binding:"required,email"`
+}
+
+// ResetPasswordInput is the payload accepted by POST /auth/reset-password.
+type ResetPasswordInput struct {
+	Token       string `json:"token" binding:"required"`
+	NewPassword string `json:"new_password" binding:"required,min=8"`
+}
+
+// VerifyEmailInput is the payload accepted by POST /auth/verify-email.
+type VerifyEmailInput struct {
+	Token string `json:"token" binding:"required"`
+}
+
 // AuthResponse is returned by both signup and signin on success.
 type AuthResponse struct {
 	Token string `json:"token"`

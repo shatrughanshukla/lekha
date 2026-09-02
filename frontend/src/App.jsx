@@ -3,9 +3,22 @@ import AuthScreen from './components/AuthScreen.jsx'
 import Dashboard from './components/Dashboard.jsx'
 import CompanyView from './components/CompanyView.jsx'
 import ProfileModal from './components/ProfileModal.jsx'
+import ResetPasswordScreen from './components/ResetPasswordScreen.jsx'
 import { IconLekhaMark, IconSun, IconMoon } from './components/Shared.jsx'
 import { useT } from './i18n.jsx'
 import { api } from './api.js'
+
+// Read once at module load, not on every render — these only ever matter
+// for the page load that actually landed here from an emailed link.
+const initialSearchParams = new URLSearchParams(window.location.search)
+const initialResetToken = initialSearchParams.get('reset_token')
+const initialVerifyToken = initialSearchParams.get('verify_token')
+
+function stripTokenFromURL(paramName) {
+  const url = new URL(window.location.href)
+  url.searchParams.delete(paramName)
+  window.history.replaceState({}, '', url.toString())
+}
 
 export default function App() {
   const [token, setToken] = useState(() => localStorage.getItem('lekha_token') || '')
@@ -17,7 +30,34 @@ export default function App() {
   const [theme, setTheme] = useState(() => localStorage.getItem('lekha_theme') || 'dark')
   const [showProfile, setShowProfile] = useState(false)
   const [avatarBroken, setAvatarBroken] = useState(false)
+  const [showResetScreen, setShowResetScreen] = useState(!!initialResetToken)
+  const [verifyBannerMsg, setVerifyBannerMsg] = useState(null)
+  const [verifyBannerDismissed, setVerifyBannerDismissed] = useState(false)
+  const [resendingVerification, setResendingVerification] = useState(false)
   const { t, lang, setLang } = useT()
+
+  // Handles the ?verify_token= link from a verification email. Runs once
+  // regardless of whether this browser happens to be signed in — the
+  // token itself is what proves ownership of the email, not the session.
+  useEffect(() => {
+    if (!initialVerifyToken) return
+    api.verifyEmail(initialVerifyToken)
+      .then(() => {
+        setVerifyBannerMsg({ type: 'success', text: t('email_verified_success_msg') })
+        // Best-effort local update so the "please verify" banner clears
+        // immediately for a logged-in user, without waiting for their next
+        // sign-in to pick up the fresh value from the server.
+        setUser((prev) => {
+          if (!prev) return prev
+          const updated = { ...prev, email_verified: true }
+          localStorage.setItem('lekha_user', JSON.stringify(updated))
+          return updated
+        })
+      })
+      .catch((err) => setVerifyBannerMsg({ type: 'error', text: err.message }))
+      .finally(() => stripTokenFromURL('verify_token'))
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [])
 
   useEffect(() => {
     document.documentElement.setAttribute('data-theme', theme)
@@ -105,6 +145,30 @@ export default function App() {
     setCompany(null)
   }
 
+  async function resendVerification() {
+    setResendingVerification(true)
+    try {
+      await api.resendVerificationEmail(token)
+      setVerifyBannerMsg({ type: 'success', text: t('verification_resent_msg') })
+    } catch (err) {
+      setVerifyBannerMsg({ type: 'error', text: err.message })
+    } finally {
+      setResendingVerification(false)
+    }
+  }
+
+  if (showResetScreen) {
+    return (
+      <ResetPasswordScreen
+        token={initialResetToken}
+        onDone={() => {
+          stripTokenFromURL('reset_token')
+          setShowResetScreen(false)
+        }}
+      />
+    )
+  }
+
   if (!token || !user) {
     return <AuthScreen onAuthed={handleAuthed} />
   }
@@ -150,6 +214,27 @@ export default function App() {
           onClose={() => setShowProfile(false)}
           onUpdated={handleProfileUpdated}
         />
+      )}
+
+      {verifyBannerMsg && (
+        <div className={`toast-banner toast-${verifyBannerMsg.type}`}>
+          {verifyBannerMsg.text}
+          <button className="toast-dismiss" onClick={() => setVerifyBannerMsg(null)}>×</button>
+        </div>
+      )}
+
+      {!user.email_verified && !verifyBannerDismissed && (
+        <div className="verify-banner">
+          <span>{t('verify_email_banner')}</span>
+          <div className="verify-banner-actions">
+            <button className="link-btn small" onClick={resendVerification} disabled={resendingVerification}>
+              {resendingVerification ? '…' : t('resend_verification_link')}
+            </button>
+            <button className="link-btn small" onClick={() => setVerifyBannerDismissed(true)}>
+              {t('dismiss')}
+            </button>
+          </div>
+        </div>
       )}
 
       {company ? (

@@ -121,3 +121,27 @@ func TestMsg_FallsBackToEnglishForUnknownKey(t *testing.T) {
 		t.Errorf("expected unknown key to fall back to itself, got %q", got)
 	}
 }
+
+func TestGenerateSecureToken(t *testing.T) {
+	raw1, hash1, err := GenerateSecureToken()
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if raw1 == "" || hash1 == "" {
+		t.Fatal("expected non-empty raw token and hash")
+	}
+	if raw1 == hash1 {
+		t.Error("the raw token and its hash should never be equal to each other")
+	}
+	if got := HashToken(raw1); got != hash1 {
+		t.Errorf("HashToken(raw) = %q, want it to match the hash GenerateSecureToken returned (%q) — otherwise a token could never be looked up again by its hash", got, hash1)
+	}
+
+	raw2, hash2, err := GenerateSecureToken()
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if raw1 == raw2 || hash1 == hash2 {
+		t.Error("two calls produced the same token — the randomness source is broken")
+	}
+}
