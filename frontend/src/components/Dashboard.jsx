@@ -3,6 +3,9 @@ import { api } from '../api.js'
 import { ErrorNote, DeleteButton, IconSearch, IconPlus, IconBuilding, IconSparkle } from './Shared.jsx'
 import { getCached, setCached } from '../cache.js'
 import { useT } from '../i18n.jsx'
+import PageLayout from './PageLayout.jsx'
+import { motion } from 'framer-motion'
+import { useMotionVariants, listVariants, cardVariants } from '../motion/index.js'
 
 export default function Dashboard({ token, user, onOpenCompany }) {
   const [companies, setCompanies] = useState(() => getCached('companies') ?? [])
@@ -14,6 +17,8 @@ export default function Dashboard({ token, user, onOpenCompany }) {
   const [insights, setInsights] = useState(null)
   const [insightsLoading, setInsightsLoading] = useState(false)
   const { t, dateLocale } = useT()
+  const listVars = useMotionVariants(listVariants)
+  const cardVars = useMotionVariants(cardVariants)
 
   async function refresh() {
     // Only show the loading state when we have nothing to show yet — if
@@ -77,19 +82,17 @@ export default function Dashboard({ token, user, onOpenCompany }) {
   )
 
   return (
-    <div className="page">
-      <div className="dash-head">
-        <div>
-          <h1 className="page-title">{t('your_companies')}</h1>
-          <p className="page-sub">
-            {t('on_record', { n: companies.length })}{filter && t('matching', { n: shown.length, q: filter })}
-          </p>
-        </div>
+    <PageLayout
+      title={t('your_companies')}
+      titleId="page-title"
+      subtitle={`${t('on_record', { n: companies.length })}${filter ? t('matching', { n: shown.length, q: filter }) : ''}`}
+      actions={
         <div className="search-box">
           <IconSearch />
           <input placeholder={t('filter_placeholder')} value={filter} onChange={(e) => setFilter(e.target.value)} />
         </div>
-      </div>
+      }
+    >
 
       <section className="panel">
         <div className="panel-head">
@@ -113,9 +116,21 @@ export default function Dashboard({ token, user, onOpenCompany }) {
       {loading ? (
         <div className="empty-state">{t('loading')}</div>
       ) : (
-        <div className="company-grid">
+        <motion.div
+          className="company-grid"
+          variants={listVars}
+          initial="initial"
+          animate="animate"
+        >
           {shown.map((c) => (
-            <button key={c.id} className="company-card" onClick={() => onOpenCompany(c)}>
+            <motion.button
+              key={c.id}
+              className="company-card"
+              onClick={() => onOpenCompany(c)}
+              variants={cardVars}
+              whileHover="hover"
+              whileTap="tap"
+            >
               <div className="company-card-top">
                 <IconBuilding />
                 <DeleteButton onConfirm={() => removeCompany(c.id)} labelKey="delete_company_label" />
@@ -125,7 +140,7 @@ export default function Dashboard({ token, user, onOpenCompany }) {
               <div className="company-card-date">
                 {t('opened_on', { date: new Date(c.created_at).toLocaleDateString(dateLocale, { year: 'numeric', month: 'short', day: 'numeric' }) })}
               </div>
-            </button>
+            </motion.button>
           ))}
 
           {creating ? (
@@ -152,8 +167,8 @@ export default function Dashboard({ token, user, onOpenCompany }) {
               <span>{t('new_company')}</span>
             </button>
           )}
-        </div>
+        </motion.div>
       )}
-    </div>
+    </PageLayout>
   )
 }

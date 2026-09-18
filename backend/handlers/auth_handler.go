@@ -103,7 +103,11 @@ func SignUp(c *gin.Context) {
 		return
 	}
 
-	go sendVerificationEmail(user.ID, user.Email, user.Name)
+	go func() {
+		if err := sendVerificationEmail(user.ID, user.Email, user.Name); err != nil {
+			fmt.Printf("failed to send verification email to %s: %v\n", user.Email, err)
+		}
+	}()
 
 	c.JSON(http.StatusCreated, models.AuthResponse{Token: token, User: user})
 }
@@ -370,6 +374,7 @@ func ResendVerificationEmail(c *gin.Context) {
 	}
 
 	if err := sendVerificationEmail(userID, email, name); err != nil {
+		fmt.Printf("failed to resend verification email to %s: %v\n", email, err)
 		c.JSON(http.StatusBadGateway, gin.H{"error": utils.Msg(c, "email_send_failed")})
 		return
 	}

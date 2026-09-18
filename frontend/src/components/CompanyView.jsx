@@ -8,6 +8,7 @@ import {
 import TransferDetail from './TransferDetail.jsx'
 import { getCached, setCached } from '../cache.js'
 import { useT } from '../i18n.jsx'
+import PageLayout from './PageLayout.jsx'
 
 // Mirrors lowBalanceThreshold in the backend — display text only. The
 // actual suggestion decision always comes from the server (a.suggested_action).
@@ -221,7 +222,7 @@ export default function CompanyView({ token, user, company, onBack }) {
   }, [fromAcc, toAcc, accounts, accountsById, t])
 
   return (
-    <div className="page">
+    <PageLayout restoreScroll={false}>
       <button className="back-link" onClick={onBack}>
         {t('all_companies_back')}
       </button>
@@ -526,7 +527,7 @@ export default function CompanyView({ token, user, company, onBack }) {
           onChanged={refresh}
         />
       )}
-    </div>
+    </PageLayout>
   )
 }
 

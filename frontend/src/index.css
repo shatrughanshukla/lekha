@@ -1,106 +1,270 @@
 /* =========================================================================
-   LEKHA — "Neural Ledger" design system
-   A dark, glass-and-glow financial command deck. Every account, transfer
-   and AI insight rendered as light moving through a live circuit — not a
-   flat dashboard, but an instrument panel for money in motion.
+   LEKHA — Design System (Phase 1)
+   One token layer for the whole product. Nothing here is decorative:
+   color carries meaning, type carries hierarchy, elevation carries depth.
+
+   Direction, per brief:
+     light  — Apple / Stripe: true neutral greys on white, no warm cast
+     dark   — GitHub Dark / Linear: near-black neutral, not a blue-washed navy
+     accent — muted indigo, used sparingly; emerald only for positive money
+
+   Both themes share EXACTLY the same spacing, radius, type and motion
+   scales — only surface/ink/accent values differ between them.
    ========================================================================= */
 
 :root {
-  /* -- surface -- */
-  --void: #050510;
-  --void-2: #090a1c;
-  --glass: rgba(255, 255, 255, 0.045);
-  --glass-hi: rgba(255, 255, 255, 0.08);
-  --glass-border: rgba(255, 255, 255, 0.10);
-  --glass-border-hi: rgba(255, 255, 255, 0.22);
+  /* ---------------------------------------------------------------
+     SPACING — 4px base. Use these instead of magic numbers so every
+     gap in the product lands on the same rhythm.
+     --------------------------------------------------------------- */
+  --space-0: 0;
+  --space-1: 4px;
+  --space-2: 8px;
+  --space-3: 12px;
+  --space-4: 16px;
+  --space-5: 20px;
+  --space-6: 24px;
+  --space-8: 32px;
+  --space-10: 40px;
+  --space-12: 48px;
+  --space-16: 64px;
+  --space-20: 80px;
+  --space-24: 96px;
 
-  /* -- ink -- */
-  --text: #edeeff;
-  --text-dim: #8d92c2;
-  --text-faint: #5c6094;
+  /* ---------------------------------------------------------------
+     RADIUS — small for controls, medium for cards, large for modals.
+     Different radii for different hierarchy levels, not one value
+     applied to everything.
+     --------------------------------------------------------------- */
+  --radius-xs: 4px;
+  --radius-sm: 6px;
+  --radius: 10px;
+  --radius-md: 10px;
+  --radius-lg: 14px;
+  --radius-xl: 20px;
+  --radius-full: 999px;
 
-  /* -- signal colors -- */
-  --violet: #8b5cf6;
-  --violet-2: #a78bfa;
-  --cyan: #2dd4ff;
-  --magenta: #ff3fb0;
-  --amber: #ffb84d;
-  --mint: #2af0c0;
-  --danger: #ff4d6d;
+  /* ---------------------------------------------------------------
+     TYPOGRAPHY
+     Inter throughout; JetBrains Mono only for figures that need to
+     align in columns. Money uses tabular figures so digits never
+     jitter between rows — how real statements set numbers.
+     --------------------------------------------------------------- */
+  --display: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', system-ui, sans-serif;
+  --body: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', system-ui, sans-serif;
+  --mono: 'JetBrains Mono', ui-monospace, SFMono-Regular, Menlo, monospace;
 
-  /* -- tokens for values that were hardcoded, now theme-aware -- */
-  --money-color: #ffd166;
-  --error-text: #ffb3c0;
-  --error-bg: rgba(255, 77, 109, 0.10);
-  --error-border: rgba(255, 77, 109, 0.35);
-  --select-option-bg: #0d0e22;
-  --select-option-text: #edeeff;
-  --grid-line: rgba(255, 255, 255, 0.05);
-  --aurora-opacity: 1;
-  --topbar-bg: rgba(9, 10, 28, 0.6);
+  --text-xs: 0.75rem;     /* 12 — badges, captions */
+  --text-sm: 0.8125rem;   /* 13 — secondary text, table cells */
+  --text-base: 0.9375rem; /* 15 — body */
+  --text-lg: 1.0625rem;   /* 17 — card titles */
+  --text-xl: 1.25rem;     /* 20 — section headings */
+  --text-2xl: 1.5rem;     /* 24 — page titles */
+  --text-3xl: 1.875rem;   /* 30 — display */
+  --text-4xl: 2.25rem;    /* 36 — hero */
+  --text-5xl: 3rem;       /* 48 — landing hero */
 
-  --grad-signature: linear-gradient(115deg, var(--violet) 0%, var(--cyan) 48%, var(--magenta) 100%);
+  --leading-none: 1;
+  --leading-tight: 1.2;   /* headings */
+  --leading-snug: 1.4;    /* subheadings, dense UI */
+  --leading-normal: 1.6;  /* body copy */
 
-  --display: 'Space Grotesk', 'Manrope', system-ui, sans-serif;
-  --body: 'Manrope', system-ui, sans-serif;
-  --mono: 'JetBrains Mono', monospace;
+  --weight-normal: 400;
+  --weight-medium: 500;
+  --weight-semibold: 600;
+  --weight-bold: 700;
 
-  --radius: 18px;
-  --radius-sm: 12px;
+  /* Tighter tracking as type gets larger — optical correction, so big
+     headings don't look loose next to body text. */
+  --tracking-tight: -0.02em;
+  --tracking-snug: -0.011em;
+  --tracking-normal: 0;
+  --tracking-wide: 0.02em;
+
+  /* ---------------------------------------------------------------
+     MOTION — brief specifies 180–350ms. Nothing outside that range.
+     --------------------------------------------------------------- */
+  --duration-fast: 180ms;
+  --duration-base: 240ms;
+  --duration-slow: 320ms;
+  --duration-slower: 350ms;
+  --ease-out: cubic-bezier(0.22, 1, 0.36, 1);      /* decelerate — entrances */
+  --ease-in-out: cubic-bezier(0.65, 0, 0.35, 1);   /* symmetric — moves */
+  --ease-spring: cubic-bezier(0.34, 1.4, 0.64, 1); /* gentle overshoot */
+
+  /* =================================================================
+     DARK THEME (default) — GitHub Dark / Linear: neutral near-black.
+     ================================================================= */
+
+  /* -- surface: each step is a real elevation level, not decoration -- */
+  --void: #0c0d10;        /* app background */
+  --void-2: #131519;      /* cards, panels */
+  --void-3: #191c21;      /* raised / hover */
+  --sidebar-bg: #0a0b0e;
+  --glass: rgba(255, 255, 255, 0.032);
+  --glass-hi: rgba(255, 255, 255, 0.06);
+  --glass-border: rgba(255, 255, 255, 0.09);
+  --glass-border-hi: rgba(255, 255, 255, 0.15);
+
+  /* -- ink: four levels, mirroring the light scale exactly -- */
+  --text: #f0f2f5;         /* headings — near-white */
+  --text-body: #c4c9d2;    /* body */
+  --text-dim: #8b94a3;     /* secondary */
+  --text-faint: #646d7c;   /* disabled / tertiary */
+
+  /* -- accent: muted indigo. Deliberately not a bright glowing blue. -- */
+  --color-primary: #7c8cf8;
+  --color-primary-2: #9aa6fa;
+  --color-primary-dim: rgba(124, 140, 248, 0.14);
+  --color-info: #62b6e8;
+  --color-success: #3fb984;   /* emerald — positive money only */
+  --color-warning: #d9a13b;
+  --color-danger: #e86b6b;
+  --color-cancelled: #7a8290; /* neutral grey — cancelled isn't an error */
+  --color-reversed: #a186e0;  /* purple — used rarely, by design */
+
+  /* -- financial chart palette: meaning-mapped, per brief -- */
+  --chart-income: #3fb984;
+  --chart-expense: #e86b6b;
+  --chart-pending: #d9a13b;
+  --chart-completed: #3fb984;
+  --chart-cancelled: #7a8290;
+  --chart-reversed: #a186e0;
+  --chart-volume: #5b9bd5;
+  --chart-balance: #7c8cf8;
+  --chart-trend: #4db6ac;
+
+  /* -- elevation: neutral, low-alpha. Deeper shadow = higher surface. -- */
+  --shadow-xs: 0 1px 2px rgba(0, 0, 0, 0.3);
+  --shadow-sm: 0 1px 3px rgba(0, 0, 0, 0.36), 0 1px 2px rgba(0, 0, 0, 0.24);
+  --shadow-md: 0 4px 12px rgba(0, 0, 0, 0.4);
+  --shadow-lg: 0 12px 28px rgba(0, 0, 0, 0.46);
+  --shadow-xl: 0 24px 56px rgba(0, 0, 0, 0.55);
+  --shadow-focus: 0 0 0 3px var(--color-primary-dim);
+
+  /* -- legacy aliases: every pre-existing rule in the app still resolves
+     through these, so retuning the semantic set above updates the whole
+     product without rewriting each rule. -- */
+  --violet: var(--color-primary);
+  --violet-2: var(--color-primary-2);
+  --cyan: var(--color-info);
+  --magenta: var(--color-reversed);
+  --amber: var(--color-warning);
+  --mint: var(--color-success);
+  --danger: var(--color-danger);
+
+  --money-color: var(--text);
+  --error-text: #f2b8b8;
+  --error-bg: rgba(232, 107, 107, 0.11);
+  --error-border: rgba(232, 107, 107, 0.3);
+  --select-option-bg: #131519;
+  --select-option-text: #f0f2f5;
+  --grid-line: rgba(255, 255, 255, 0.055);
+  --aurora-opacity: 0;
+  --topbar-bg: #0c0d10;
+
+  --sidebar-border: rgba(255, 255, 255, 0.07);
+  --sidebar-active-bg: rgba(124, 140, 248, 0.13);
+  --sidebar-active-text: #f0f2f5;
+  --sidebar-text: #8b94a3;
+  --on-brand: #0c0d10;
+
+  /* Flat, not a gradient — the brief rules out gradient text and glowing
+     buttons. Kept as a gradient-shaped value so the existing
+     background-clip:text rules keep working; they now render solid. */
+  --grad-signature: linear-gradient(135deg, var(--color-primary) 0%, var(--color-primary) 100%);
+
   color-scheme: dark;
 }
 
-/* -- Light theme: same brand gradient and signal colors (the identity
-   stays put), but surfaces flip to soft off-white glass and ink-dark
-   text. Toggled by setting data-theme="light" on <html>. -- */
+/* ===================================================================
+   LIGHT THEME — Apple / Stripe: true neutral greys on white.
+   Ink levels map 1:1 to the brief: heading near-black, body grey-700,
+   secondary grey-500, disabled grey-400.
+   =================================================================== */
 [data-theme='light'] {
-  --void: #f3f4fb;
-  --void-2: #ecebfa;
-  --glass: rgba(20, 20, 45, 0.035);
-  --glass-hi: rgba(20, 20, 45, 0.06);
-  --glass-border: rgba(20, 20, 45, 0.10);
-  --glass-border-hi: rgba(20, 20, 45, 0.22);
+  --void: #f6f7f9;
+  --void-2: #ffffff;
+  --void-3: #fbfbfc;
+  --sidebar-bg: #fbfbfc;
+  --glass: rgba(15, 23, 42, 0.022);
+  --glass-hi: rgba(15, 23, 42, 0.045);
+  --glass-border: #e6e8ec;
+  --glass-border-hi: #d3d7de;
 
-  --text: #14152e;
-  --text-dim: #565a82;
-  --text-faint: #8487ab;
+  --text: #16181d;       /* heading — almost black */
+  --text-body: #3f4550;  /* body — grey 700 */
+  --text-dim: #6b7280;   /* secondary — grey 500 */
+  --text-faint: #9ca3af; /* disabled — grey 400 */
 
-  --money-color: #8a5a00;
-  --error-text: #b0203a;
-  --error-bg: rgba(255, 77, 109, 0.08);
-  --error-border: rgba(255, 77, 109, 0.35);
+  --color-primary: #4f5bd5;
+  --color-primary-2: #6470e0;
+  --color-primary-dim: rgba(79, 91, 213, 0.12);
+  --color-info: #0e7490;
+  --color-success: #07845a;
+  --color-warning: #b45309;
+  --color-danger: #c2312b;
+  --color-cancelled: #6b7280;
+  --color-reversed: #6d47c4;
+
+  --chart-income: #07845a;
+  --chart-expense: #c2312b;
+  --chart-pending: #b45309;
+  --chart-completed: #07845a;
+  --chart-cancelled: #6b7280;
+  --chart-reversed: #6d47c4;
+  --chart-volume: #2f6fb0;
+  --chart-balance: #4f5bd5;
+  --chart-trend: #16867c;
+
+  --shadow-xs: 0 1px 2px rgba(15, 23, 42, 0.05);
+  --shadow-sm: 0 1px 3px rgba(15, 23, 42, 0.07), 0 1px 2px rgba(15, 23, 42, 0.04);
+  --shadow-md: 0 4px 12px rgba(15, 23, 42, 0.08);
+  --shadow-lg: 0 12px 28px rgba(15, 23, 42, 0.1);
+  --shadow-xl: 0 24px 56px rgba(15, 23, 42, 0.13);
+  --shadow-focus: 0 0 0 3px var(--color-primary-dim);
+
+  --violet: var(--color-primary);
+  --violet-2: var(--color-primary-2);
+  --cyan: var(--color-info);
+  --magenta: var(--color-reversed);
+  --amber: var(--color-warning);
+  --mint: var(--color-success);
+  --danger: var(--color-danger);
+
+  --money-color: var(--text);
+  --error-text: #8c2520;
+  --error-bg: rgba(194, 49, 43, 0.07);
+  --error-border: rgba(194, 49, 43, 0.26);
   --select-option-bg: #ffffff;
-  --select-option-text: #14152e;
-  --grid-line: rgba(20, 20, 45, 0.06);
-  --aurora-opacity: 0.55;
-  --topbar-bg: rgba(200, 182, 227, 0.68);
+  --select-option-text: #16181d;
+  --grid-line: rgba(15, 23, 42, 0.05);
+  --aurora-opacity: 0;
+  --topbar-bg: #f6f7f9;
+
+  --sidebar-border: #e6e8ec;
+  --sidebar-active-bg: rgba(79, 91, 213, 0.08);
+  --sidebar-active-text: #4f5bd5;
+  --sidebar-text: #6b7280;
+  --on-brand: #ffffff;
 
   color-scheme: light;
 }
 
-/* The top bar in light mode is tinted brownish-purple rather than the
-   default off-white glass, so its own text/icons need to flip to a light
-   ink to stay readable — scoped to .top-bar only so it doesn't affect
-   .user-name / .btn-ghost / .theme-toggle used elsewhere in the app. */
-[data-theme='light'] .top-bar .user-name,
-[data-theme='light'] .top-bar .theme-toggle,
-[data-theme='light'] .top-bar .btn-ghost {
-  color: #5913a0;
+/* Smooth, non-jarring theme switch — color/background transitions on the
+   handful of surfaces that actually need it, not a blanket * selector
+   (which would also animate layout-affecting properties and fight with
+   Framer Motion page transitions). */
+body, .sidebar, .top-bar, .card, .panel, .kpi-card, .account-chip, .company-card,
+.page-layout, .sidebar-nav-item, .ui-card, .ui-input, .search-box, .ledger-row {
+  transition: background-color var(--duration-base) var(--ease-out),
+              border-color var(--duration-base) var(--ease-out),
+              color var(--duration-base) var(--ease-out);
 }
-[data-theme='light'] .top-bar .theme-toggle,
-[data-theme='light'] .top-bar .btn-ghost {
-  background: rgba(255, 255, 255, 0.14);
-  border-color: rgba(255, 255, 255, 0.28);
-}
-[data-theme='light'] .top-bar .user-name-btn:hover { background: rgba(255, 255, 255, 0.14); }
-[data-theme='light'] .top-bar .user-name-btn:hover .user-name { color: #ffffff; }
-[data-theme='light'] .top-bar .theme-toggle:hover,
-[data-theme='light'] .top-bar .btn-ghost:hover {
-  color: #ffffff;
-  border-color: rgba(255, 255, 255, 0.5);
-  background: rgba(255, 255, 255, 0.22);
-  box-shadow: none;
-}
+
+/* Framer Motion animates inline styles via rAF and ignores the CSS rule
+   below, so the reduced-motion contract is enforced in JS as well — see
+   useMotionVariants() in src/motion/index.js. Both halves are needed. */
 
 @media (prefers-reduced-motion: reduce) {
   *, *::before, *::after { animation-duration: 0.001ms !important; animation-iteration-count: 1 !important; transition-duration: 0.001ms !important; }
@@ -112,64 +276,67 @@ html, body, #root { height: 100%; }
 body {
   margin: 0;
   background: var(--void);
-  color: var(--text);
+  color: var(--text-body);
   font-family: var(--body);
+  font-size: var(--text-base);
+  line-height: var(--leading-normal);
+  letter-spacing: var(--tracking-snug);
+  /* cv11 = single-storey 'a'/'g'; ss01 tightens Inter's default spacing —
+     both make Inter read closer to SF at UI sizes. */
+  font-feature-settings: 'cv11', 'ss01';
   -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  text-rendering: optimizeLegibility;
   position: relative;
   overflow-x: hidden;
 }
 
-/* -- Aurora field: slow-drifting color blobs behind everything -- */
-body::before {
-  content: '';
-  position: fixed;
-  inset: -10%;
-  z-index: -2;
-  pointer-events: none;
-  background-image:
-    radial-gradient(38% 32% at 12% 14%, rgba(139, 92, 246, 0.30), transparent 70%),
-    radial-gradient(34% 30% at 88% 18%, rgba(45, 212, 255, 0.22), transparent 70%),
-    radial-gradient(40% 36% at 78% 92%, rgba(255, 63, 176, 0.20), transparent 70%),
-    radial-gradient(30% 26% at 8% 88%, rgba(42, 240, 192, 0.14), transparent 70%);
-  background-repeat: no-repeat;
-  opacity: var(--aurora-opacity);
-  animation: auroraDrift 26s ease-in-out infinite alternate;
+/* Heading scale — headings take the darkest ink, body sits one step
+   lighter (set on body above). This is the whole hierarchy: four ink
+   levels, no color used to create emphasis. */
+h1, h2, h3, h4, h5, h6 {
+  color: var(--text);
+  font-weight: var(--weight-semibold);
+  line-height: var(--leading-tight);
+  letter-spacing: var(--tracking-tight);
+  margin: 0;
+}
+h1 { font-size: var(--text-3xl); }
+h2 { font-size: var(--text-2xl); }
+h3 { font-size: var(--text-xl); }
+h4 { font-size: var(--text-lg); }
+h5 { font-size: var(--text-base); }
+h6 { font-size: var(--text-sm); }
+
+/* Numerals in tables and figures line up in columns instead of jittering
+   row to row — the single most "financial software" typographic detail. */
+table, .money, .mono, [data-numeric] {
+  font-variant-numeric: tabular-nums;
+  font-feature-settings: 'tnum';
 }
 
-/* -- Fine circuit grid, faded toward the edges -- */
-body::after {
-  content: '';
-  position: fixed;
-  inset: 0;
-  z-index: -1;
-  pointer-events: none;
-  opacity: 0.5;
-  background-image:
-    linear-gradient(var(--grid-line) 1px, transparent 1px),
-    linear-gradient(90deg, var(--grid-line) 1px, transparent 1px);
-  background-size: 42px 42px;
-  -webkit-mask-image: radial-gradient(80% 65% at 50% 20%, #000 0%, transparent 75%);
-  mask-image: radial-gradient(80% 65% at 50% 20%, #000 0%, transparent 75%);
-}
+/* No decorative background — flat, solid surfaces per the professional
+   reference (--aurora-opacity is kept at 0 above for backward-compat with
+   any leftover references, rather than hunting down every usage). */
 
-@keyframes auroraDrift {
-  0%   { transform: translate3d(0, 0, 0) scale(1); }
-  50%  { transform: translate3d(-2%, 2%, 0) scale(1.06); }
-  100% { transform: translate3d(2%, -1%, 0) scale(1.02); }
-}
-
+/* Neutral scrollbar — a coloured gradient thumb reads as decoration and
+   competes with real status colour elsewhere on the page. */
 ::-webkit-scrollbar { width: 11px; height: 11px; }
-::-webkit-scrollbar-track { background: var(--void); }
+::-webkit-scrollbar-track { background: transparent; }
 ::-webkit-scrollbar-thumb {
-  background: linear-gradient(var(--violet), var(--cyan));
-  border-radius: 8px;
-  border: 2px solid var(--void);
+  background: var(--glass-border-hi);
+  border-radius: var(--radius-full);
+  border: 3px solid var(--void);
 }
-::-webkit-scrollbar-thumb:hover { background: linear-gradient(var(--cyan), var(--magenta)); }
-* { scrollbar-color: var(--violet) var(--void); scrollbar-width: thin; }
+::-webkit-scrollbar-thumb:hover { background: var(--text-faint); }
+* { scrollbar-color: var(--glass-border-hi) transparent; scrollbar-width: thin; }
 
 button, input, select { font-family: inherit; font-size: 1rem; }
-:focus-visible { outline: 2px solid var(--cyan); outline-offset: 2px; border-radius: 4px; }
+:focus-visible {
+  outline: 2px solid var(--color-primary);
+  outline-offset: 2px;
+  border-radius: var(--radius-xs);
+}
 
 .mono { font-family: var(--mono); font-variant-numeric: tabular-nums; }
 .dim { color: var(--text-dim); }
@@ -183,9 +350,9 @@ button, input, select { font-family: inherit; font-size: 1rem; }
 .link-btn {
   background: none; border: none; padding: 0; color: var(--cyan);
   text-decoration: underline; text-underline-offset: 3px; cursor: pointer; font-size: inherit;
-  transition: color 0.15s, text-shadow 0.15s;
+  transition: color var(--duration-fast) var(--ease-out);
 }
-.link-btn:hover { color: var(--mint); text-shadow: 0 0 10px rgba(42, 240, 192, 0.6); }
+.link-btn:hover { color: var(--color-primary-2); }
 
 /* ==================== Wordmark ==================== */
 
@@ -203,15 +370,11 @@ button, input, select { font-family: inherit; font-size: 1rem; }
   background-clip: text;
   -webkit-text-fill-color: transparent;
 }
-.wordmark svg, .wordmark img { flex-shrink: 0; animation: glowPulse 3.2s ease-in-out infinite; }
+.wordmark svg, .wordmark img { flex-shrink: 0; }
 .wordmark.small {
   font-size: 1.35rem;
 }
 
-@keyframes glowPulse {
-  0%, 100% { filter: drop-shadow(0 0 6px rgba(139, 92, 246, 0.5)); }
-  50% { filter: drop-shadow(0 0 14px rgba(45, 212, 255, 0.75)); }
-}
 
 /* ==================== Auth: split-screen hero ==================== */
 
@@ -228,9 +391,11 @@ button, input, select { font-family: inherit; font-size: 1rem; }
   padding: 64px 72px;
   display: flex;
   align-items: center;
+  /* One quiet accent wash rather than two competing coloured blooms —
+     enough to separate the hero from the form panel, not enough to read
+     as decoration. */
   background:
-    radial-gradient(60% 55% at 20% 20%, rgba(139, 92, 246, 0.22), transparent 65%),
-    radial-gradient(50% 45% at 85% 80%, rgba(45, 212, 255, 0.16), transparent 65%),
+    radial-gradient(75% 60% at 18% 12%, var(--color-primary-dim), transparent 70%),
     var(--void-2);
   border-right: 1px solid var(--glass-border);
 }
@@ -297,7 +462,7 @@ button, input, select { font-family: inherit; font-size: 1rem; }
   height: 9px;
   border-radius: 50%;
   background: var(--grad-signature);
-  box-shadow: 0 0 8px rgba(139, 92, 246, 0.7);
+  box-shadow: none;
 }
 
 .auth-form-panel {
@@ -311,12 +476,11 @@ button, input, select { font-family: inherit; font-size: 1rem; }
 .auth-card {
   width: 100%;
   max-width: 360px;
-  background: var(--glass);
+  background: var(--void-2);
   border: 1px solid var(--glass-border);
   border-radius: var(--radius);
   padding: 30px;
-  backdrop-filter: blur(18px);
-  box-shadow: 0 20px 60px rgba(0, 0, 0, 0.5), 0 0 0 1px rgba(255,255,255,0.02) inset;
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.1);
 }
 
 .tab-row {
@@ -341,9 +505,9 @@ button, input, select { font-family: inherit; font-size: 1rem; }
   transition: color 0.15s, background 0.2s;
 }
 .tab.active {
-  color: #0a0a16;
+  color: var(--on-brand);
   background: var(--grad-signature);
-  box-shadow: 0 0 16px rgba(139, 92, 246, 0.5);
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.12);
 }
 
 .auth-card form label {
@@ -370,8 +534,8 @@ button, input, select { font-family: inherit; font-size: 1rem; }
 .auth-card input:focus {
   border-color: var(--cyan);
   outline: none;
-  background: rgba(45, 212, 255, 0.06);
-  box-shadow: 0 0 0 3px rgba(45, 212, 255, 0.15);
+  background: var(--color-primary-dim);
+  box-shadow: var(--shadow-focus);
 }
 
 /* ==================== Buttons ==================== */
@@ -381,7 +545,7 @@ button, input, select { font-family: inherit; font-size: 1rem; }
   overflow: hidden;
   background: var(--grad-signature);
   background-size: 200% auto;
-  color: #08080f;
+  color: var(--on-brand);
   border: none;
   border-radius: 999px;
   padding: 11px 22px;
@@ -390,7 +554,7 @@ button, input, select { font-family: inherit; font-size: 1rem; }
   letter-spacing: 0.01em;
   cursor: pointer;
   white-space: nowrap;
-  box-shadow: 0 4px 18px rgba(139, 92, 246, 0.35);
+  box-shadow: var(--shadow-sm);
   transition: transform 0.15s ease, box-shadow 0.15s ease, background-position 0.4s ease;
 }
 .btn-primary.full { width: 100%; margin-top: 10px; }
@@ -399,7 +563,7 @@ button, input, select { font-family: inherit; font-size: 1rem; }
 .btn-primary:hover:not(:disabled) {
   background-position: 100% center;
   transform: translateY(-1px);
-  box-shadow: 0 8px 26px rgba(45, 212, 255, 0.45);
+  box-shadow: var(--shadow-md);
 }
 .btn-primary:active:not(:disabled) { transform: translateY(0); }
 
@@ -417,8 +581,8 @@ button, input, select { font-family: inherit; font-size: 1rem; }
 .btn-ghost:hover {
   border-color: var(--cyan);
   color: var(--cyan);
-  background: rgba(45, 212, 255, 0.07);
-  box-shadow: 0 0 14px rgba(45, 212, 255, 0.25);
+  background: var(--color-primary-dim);
+  box-shadow: none;
 }
 
 .delete-btn {
@@ -440,7 +604,7 @@ button, input, select { font-family: inherit; font-size: 1rem; }
   padding: 4px 10px;
   border: 1px solid var(--danger);
   border-radius: 999px;
-  box-shadow: 0 0 10px rgba(255, 77, 109, 0.4);
+  box-shadow: none;
 }
 .company-card:hover .delete-btn,
 .account-chip:hover .delete-btn,
@@ -459,21 +623,268 @@ button, input, select { font-family: inherit; font-size: 1rem; }
 
 /* ==================== Shell ==================== */
 
-.app-shell { min-height: 100vh; }
+.app-shell { min-height: 100vh; display: flex; }
+
+/* ==================== Sidebar ====================
+   Width is animated by Framer Motion (see motion/sidebarVariants.js), so
+   there is deliberately NO width or width-transition declared here for the
+   desktop rail — CSS and JS both owning it would fight on every toggle. */
+
+.sidebar {
+  flex-shrink: 0;
+  background: var(--sidebar-bg);
+  border-right: 1px solid var(--sidebar-border);
+  display: flex;
+  flex-direction: column;
+  padding: var(--space-5) var(--space-3);
+  position: sticky;
+  top: 0;
+  height: 100vh;
+  overflow-y: auto;
+  overflow-x: hidden;
+}
+.sidebar-collapsed { padding: var(--space-5) var(--space-3); align-items: center; }
+
+.sidebar-logo {
+  display: flex;
+  align-items: center;
+  height: 34px;
+  padding: 0 var(--space-3) var(--space-6);
+  font-family: var(--display);
+  font-weight: var(--weight-bold);
+  font-size: 1.15rem;
+  letter-spacing: var(--tracking-tight);
+  color: var(--text);
+  white-space: nowrap;
+}
+.sidebar-collapsed .sidebar-logo { padding-left: 0; padding-right: 0; justify-content: center; }
+.sidebar-logo-collapsed { font-size: 1.1rem; color: var(--color-primary); }
+
+.sidebar-nav { display: flex; flex-direction: column; gap: 2px; flex: 1; }
+
+.sidebar-nav-item {
+  position: relative;
+  display: block;
+  padding: 9px var(--space-3);
+  border-radius: var(--radius-sm);
+  color: var(--sidebar-text);
+  font-size: 0.9rem;
+  font-weight: var(--weight-medium);
+  cursor: pointer;
+  border: none;
+  background: none;
+  text-align: left;
+  text-decoration: none;
+  width: 100%;
+  isolation: isolate;
+  transition: color var(--duration-fast) var(--ease-out);
+}
+/* The inner span carries the icon + label so the shared-layout active
+   background can sit behind them as a sibling at z-index 0. */
+.sidebar-nav-inner {
+  position: relative;
+  z-index: 1;
+  display: flex;
+  align-items: center;
+  gap: 11px;
+  min-width: 0;
+}
+.sidebar-nav-label { white-space: nowrap; overflow: hidden; }
+.sidebar-nav-item svg { flex-shrink: 0; }
+
+.sidebar-nav-item:hover { color: var(--text); }
+/* Hover tint is a pseudo-element, not background-color, so it can fade
+   independently of the active indicator sliding over the same row. */
+.sidebar-nav-item::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  background: var(--glass);
+  opacity: 0;
+  z-index: 0;
+  transition: opacity var(--duration-fast) var(--ease-out);
+}
+.sidebar-nav-item:hover::before { opacity: 1; }
+.sidebar-nav-item.active { color: var(--sidebar-active-text); font-weight: var(--weight-semibold); }
+.sidebar-nav-item.active::before { opacity: 0; }
+.sidebar-nav-item:focus-visible { outline: 2px solid var(--color-primary); outline-offset: -2px; }
+
+/* The sliding active indicator itself — a single element shared across
+   every nav row via layoutId. */
+.sidebar-active-bg {
+  position: absolute;
+  inset: 0;
+  border-radius: var(--radius-sm);
+  background: var(--sidebar-active-bg);
+  z-index: 0;
+}
+.sidebar-active-bg::after {
+  content: '';
+  position: absolute;
+  left: 0;
+  top: 50%;
+  transform: translateY(-50%);
+  width: 2.5px;
+  height: 17px;
+  border-radius: 0 var(--radius-full) var(--radius-full) 0;
+  background: var(--color-primary);
+}
+.sidebar-collapsed .sidebar-nav-item { padding: 9px 0; }
+.sidebar-collapsed .sidebar-nav-inner { justify-content: center; }
+.sidebar-collapsed .sidebar-active-bg::after { display: none; }
+
+/* ---------- icon buttons in the rail ---------- */
+.sidebar-icon-btn {
+  background: none;
+  border: 1px solid var(--sidebar-border);
+  border-radius: var(--radius-sm);
+  color: var(--text-dim);
+  padding: 6px;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: color var(--duration-fast) var(--ease-out),
+              border-color var(--duration-fast) var(--ease-out),
+              background-color var(--duration-fast) var(--ease-out);
+}
+.sidebar-icon-btn:hover { color: var(--text); background: var(--glass); border-color: var(--glass-border-hi); }
+.sidebar-collapse-btn { align-self: flex-end; margin: var(--space-2) 0; }
+.sidebar-collapsed .sidebar-collapse-btn { align-self: center; }
+
+.sidebar-nav-soon {
+  margin-left: auto;
+  font-size: 0.6rem;
+  font-weight: var(--weight-semibold);
+  letter-spacing: var(--tracking-wide);
+  color: var(--text-faint);
+  background: var(--glass);
+  border: 1px solid var(--glass-border);
+  border-radius: var(--radius-full);
+  padding: 2px 6px;
+}
+
+.sidebar-insights-card {
+  background: var(--glass);
+  border: 1px solid var(--glass-border);
+  border-radius: var(--radius-sm);
+  padding: var(--space-4);
+  margin-top: var(--space-3);
+}
+.sidebar-insights-card h4 {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  margin: 0 0 6px;
+  font-size: 0.85rem;
+  font-weight: var(--weight-semibold);
+  color: var(--text);
+}
+.sidebar-insights-card p { margin: 0 0 var(--space-3); font-size: 0.78rem; color: var(--text-dim); line-height: var(--leading-snug); }
+
+/* ---------- theme pill ---------- */
+.sidebar-theme-pill {
+  display: flex;
+  margin-top: var(--space-4);
+  padding: 3px;
+  background: var(--glass);
+  border: 1px solid var(--glass-border);
+  border-radius: var(--radius-full);
+}
+.sidebar-theme-pill button {
+  position: relative;
+  flex: 1;
+  padding: 7px 0;
+  border: none;
+  border-radius: var(--radius-full);
+  background: none;
+  color: var(--text-dim);
+  font-size: 0.8rem;
+  font-weight: var(--weight-medium);
+  cursor: pointer;
+  isolation: isolate;
+  transition: color var(--duration-fast) var(--ease-out);
+}
+.sidebar-theme-pill button:hover { color: var(--text); }
+.sidebar-theme-pill button.active { color: var(--on-brand); }
+.sidebar-theme-pill-bg {
+  position: absolute;
+  inset: 0;
+  border-radius: var(--radius-full);
+  background: var(--color-primary);
+  z-index: 0;
+}
+.sidebar-theme-pill-label {
+  position: relative;
+  z-index: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+}
+
+/* ---------- mobile drawer ---------- */
+.sidebar-backdrop {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.45);
+  z-index: 90;
+}
+.sidebar-drawer {
+  position: fixed;
+  inset: 0 auto 0 0;
+  width: 272px;
+  max-width: 82vw;
+  z-index: 100;
+  box-shadow: var(--shadow-xl);
+}
+.sidebar-drawer-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-3);
+}
+.sidebar-drawer-head .sidebar-logo { padding-bottom: 0; }
+
+.main-column { flex: 1; min-width: 0; display: flex; flex-direction: column; }
 
 .top-bar {
   display: flex;
   align-items: center;
-  justify-content: space-between;
-  padding: 18px 40px;
+  justify-content: flex-end;
+  padding: 16px 32px;
   background: var(--topbar-bg);
-  backdrop-filter: blur(16px);
   border-bottom: 1px solid var(--glass-border);
   position: sticky;
   top: 0;
   z-index: 40;
 }
-.top-bar-right { display: flex; align-items: center; gap: 18px; }
+.top-bar-right { display: flex; align-items: center; gap: var(--space-3); margin-left: auto; }
+
+/* Header icon controls — quiet by default, tinted on hover. The press
+   feedback itself is handled by Framer (iconButtonVariants). */
+.top-bar-icon-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 32px;
+  height: 32px;
+  padding: 0;
+  border: 1px solid transparent;
+  border-radius: var(--radius-sm);
+  background: none;
+  color: var(--text-dim);
+  font-size: var(--text-sm);
+  font-weight: var(--weight-medium);
+  cursor: pointer;
+  transition: color var(--duration-fast) var(--ease-out),
+              background-color var(--duration-fast) var(--ease-out),
+              border-color var(--duration-fast) var(--ease-out);
+}
+.top-bar-icon-btn:hover { color: var(--text); background: var(--glass); border-color: var(--glass-border); }
+.top-bar-icon-swap { display: flex; }
+.top-bar-menu-btn { margin-right: auto; }
 .user-name { color: var(--text-dim); font-size: 0.9rem; }
 
 .user-name-btn {
@@ -566,7 +977,7 @@ button, input, select { font-family: inherit; font-size: 1rem; }
 @keyframes spin { to { transform: rotate(360deg); } }
 .profile-avatar-actions { display: flex; align-items: center; gap: 14px; }
 .link-btn.danger { color: var(--danger); }
-.link-btn.danger:hover { color: var(--danger); text-shadow: 0 0 10px rgba(255, 77, 109, 0.5); }
+.link-btn.danger:hover { color: var(--danger); }
 .link-btn:disabled { opacity: 0.5; cursor: not-allowed; }
 
 .profile-form { display: flex; flex-direction: column; gap: 16px; }
@@ -592,7 +1003,7 @@ button, input, select { font-family: inherit; font-size: 1rem; }
 .profile-form input:focus, .profile-form select:focus {
   border-color: var(--cyan);
   outline: none;
-  box-shadow: 0 0 0 3px rgba(45, 212, 255, 0.15);
+  box-shadow: var(--shadow-focus);
 }
 .profile-form select option { background: var(--select-option-bg); color: var(--select-option-text); }
 .profile-form .panel-hint { margin: -6px 0 0; font-size: 0.78rem; }
@@ -612,8 +1023,8 @@ button, input, select { font-family: inherit; font-size: 1rem; }
 .password-success-note {
   margin: 4px 0 16px;
   padding: 10px 14px;
-  background: rgba(42, 240, 192, 0.10);
-  border: 1px solid rgba(42, 240, 192, 0.35);
+  background: var(--color-primary-dim);
+  border: 1px solid color-mix(in srgb, var(--color-primary) 35%, transparent);
   border-radius: 10px;
   color: var(--mint);
   font-size: 0.85rem;
@@ -630,8 +1041,8 @@ button, input, select { font-family: inherit; font-size: 1rem; }
   font-size: 0.88rem;
 }
 .toast-success {
-  background: rgba(42, 240, 192, 0.10);
-  border: 1px solid rgba(42, 240, 192, 0.35);
+  background: var(--color-primary-dim);
+  border: 1px solid color-mix(in srgb, var(--color-primary) 35%, transparent);
   color: var(--mint);
 }
 .toast-error {
@@ -685,7 +1096,7 @@ button, input, select { font-family: inherit; font-size: 1rem; }
 .theme-toggle:hover {
   color: var(--cyan);
   border-color: var(--cyan);
-  box-shadow: 0 0 14px rgba(45, 212, 255, 0.3);
+  box-shadow: none;
   transform: rotate(15deg);
 }
 
@@ -709,7 +1120,7 @@ button, input, select { font-family: inherit; font-size: 1rem; }
 .lang-toggle:hover {
   color: var(--violet-2);
   border-color: var(--violet-2);
-  box-shadow: 0 0 14px rgba(139, 92, 246, 0.3);
+  box-shadow: none;
 }
 .auth-lang-toggle {
   position: absolute;
@@ -718,7 +1129,43 @@ button, input, select { font-family: inherit; font-size: 1rem; }
   z-index: 5;
 }
 
-.page { max-width: 980px; margin: 0 auto; padding: 44px 24px 90px; }
+.page { max-width: 980px; margin: 0 auto; padding: var(--space-12) var(--space-6) 90px; }
+
+/* ==================== PageLayout ====================
+   The shared frame every route renders into. Legacy `.page` above is kept
+   for pages not yet migrated; both use the same width and padding values
+   so a half-migrated app has no visible seam. */
+
+.page-viewport { flex: 1; min-width: 0; }
+
+.page-layout {
+  margin: 0 auto;
+  padding: var(--space-12) var(--space-6) 90px;
+  width: 100%;
+}
+.page-layout-default { max-width: 980px; }
+.page-layout-wide { max-width: 1240px; }
+.page-layout-full { max-width: none; }
+.page-layout-flush { padding: 0; max-width: none; }
+
+.page-layout-head {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: var(--space-5);
+  flex-wrap: wrap;
+  margin-bottom: var(--space-8);
+}
+.page-layout-heading { min-width: 0; }
+.page-layout-head .page-title { margin: 0; }
+.page-layout-head .page-sub { margin: var(--space-1) 0 0; max-width: 62ch; }
+.page-layout-actions {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  flex-shrink: 0;
+}
+.page-layout-body { min-width: 0; }
 
 .page-title {
   font-family: var(--display);
@@ -759,7 +1206,11 @@ button, input, select { font-family: inherit; font-size: 1rem; }
   background: var(--glass);
   transition: border-color 0.15s, box-shadow 0.15s;
 }
-.search-box:focus-within { border-color: var(--violet-2); box-shadow: 0 0 0 3px rgba(139, 92, 246, 0.15); }
+.search-box:focus-within {
+  border-color: var(--color-primary);
+  box-shadow: var(--shadow-focus);
+}
+.search-box:hover:not(:focus-within) { border-color: var(--glass-border-hi); }
 .search-box input {
   border: none; background: none; outline: none; color: var(--text); flex: 1;
 }
@@ -774,7 +1225,7 @@ button, input, select { font-family: inherit; font-size: 1rem; }
 .company-card {
   position: relative;
   text-align: left;
-  background: var(--glass);
+  background: var(--void-2);
   border: 1px solid var(--glass-border);
   border-radius: var(--radius);
   padding: 20px;
@@ -783,39 +1234,32 @@ button, input, select { font-family: inherit; font-size: 1rem; }
   display: flex;
   flex-direction: column;
   gap: 10px;
-  backdrop-filter: blur(14px);
-  transition: transform 0.2s ease, box-shadow 0.2s ease, border-color 0.2s ease;
+  transition: border-color 0.15s ease, box-shadow 0.15s ease;
   overflow: hidden;
 }
-/* Rotating hue accent bar along the top edge — each card catches the
-   signature gradient at a slightly different phase. */
-.company-card::before {
-  content: '';
-  position: absolute;
-  top: 0; left: 0; right: 0;
-  height: 3px;
-  background: var(--grad-signature);
-  opacity: 0.85;
-}
-.company-grid > .company-card:nth-child(4n+2)::before { filter: hue-rotate(60deg); }
-.company-grid > .company-card:nth-child(4n+3)::before { filter: hue-rotate(150deg); }
-.company-grid > .company-card:nth-child(4n+4)::before { filter: hue-rotate(230deg); }
-
 .company-card:hover {
-  border-color: var(--glass-border-hi);
-  transform: translateY(-5px);
-  box-shadow: 0 18px 40px rgba(0, 0, 0, 0.45), 0 0 0 1px rgba(255,255,255,0.04) inset;
+  border-color: var(--violet);
+  box-shadow: 0 4px 14px rgba(0, 0, 0, 0.08);
 }
 
 .company-card-top {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  color: var(--cyan);
+  color: var(--violet);
+}
+.company-card-top svg {
+  background: color-mix(in srgb, var(--violet) 12%, transparent);
+  color: var(--violet);
+  border-radius: var(--radius-sm);
+  padding: 8px;
+  width: 34px;
+  height: 34px;
+  box-sizing: border-box;
 }
 
-.company-card-name { font-family: var(--display); font-weight: 600; font-size: 1.12rem; line-height: 1.3; color: var(--text); }
-.company-card-meta { color: var(--text-faint); font-size: 0.78rem; }
+.company-card-name { font-family: var(--display); font-weight: 700; font-size: 1.12rem; line-height: 1.3; color: var(--text); }
+.company-card-meta { color: var(--cyan); font-size: 0.78rem; }
 .company-card-date { color: var(--text-dim); font-size: 0.78rem; margin-top: -4px; }
 
 .new-card {
@@ -827,13 +1271,10 @@ button, input, select { font-family: inherit; font-size: 1rem; }
   gap: 8px;
   background: transparent;
   box-shadow: none !important;
-  transform: none !important;
 }
-.new-card::before { display: none; }
-.new-card:hover { color: var(--cyan); border-color: var(--cyan); background: rgba(45, 212, 255, 0.05); transform: none !important; }
+.new-card:hover { color: var(--violet); border-color: var(--violet); background: color-mix(in srgb, var(--violet) 5%, transparent); }
 
-.new-card-form { gap: 12px; box-shadow: none !important; transform: none !important; }
-.new-card-form::before { display: none; }
+.new-card-form { gap: 12px; box-shadow: none !important; }
 .new-card-form input {
   background: var(--glass);
   border: 1px solid var(--glass-border);
@@ -847,12 +1288,11 @@ button, input, select { font-family: inherit; font-size: 1rem; }
 
 .statement-header {
   position: relative;
-  background: linear-gradient(135deg, rgba(139, 92, 246, 0.14), rgba(45, 212, 255, 0.08));
+  background: var(--void-2);
   border: 1px solid var(--glass-border);
   border-radius: var(--radius);
   padding: 28px 30px;
   margin-bottom: 28px;
-  backdrop-filter: blur(16px);
   overflow: hidden;
 }
 .statement-header::before {
@@ -887,12 +1327,11 @@ button, input, select { font-family: inherit; font-size: 1rem; }
 
 .panel {
   position: relative;
-  background: var(--glass);
+  background: var(--void-2);
   border: 1px solid var(--glass-border);
   border-radius: var(--radius);
   padding: 24px;
   margin-bottom: 28px;
-  backdrop-filter: blur(14px);
   transition: border-color 0.2s ease;
 }
 .panel:hover { border-color: var(--glass-border-hi); }
@@ -919,7 +1358,7 @@ button, input, select { font-family: inherit; font-size: 1rem; }
   width: 3px;
   border-radius: 2px;
   background: var(--grad-signature);
-  box-shadow: 0 0 8px rgba(139, 92, 246, 0.7);
+  box-shadow: none;
 }
 
 .panel-head { display: flex; align-items: center; justify-content: space-between; margin-bottom: 4px; }
@@ -947,9 +1386,213 @@ button, input, select { font-family: inherit; font-size: 1rem; }
   animation: signalPulse 2.4s ease-in-out infinite;
 }
 @keyframes signalPulse {
-  0%, 100% { opacity: 0.5; box-shadow: 0 0 4px rgba(45, 212, 255, 0.4); }
-  50% { opacity: 1; box-shadow: 0 0 14px rgba(45, 212, 255, 0.8); }
+  0%, 100% { opacity: 0.6; }
+  50% { opacity: 1; }
 }
+
+/* ==================== Reports page ==================== */
+
+.reports-scope-select {
+  background: var(--void-2);
+  border: 1px solid var(--glass-border);
+  border-radius: var(--radius-sm);
+  padding: 9px 14px;
+  color: var(--text);
+  font-size: 0.88rem;
+  font-family: var(--body);
+  cursor: pointer;
+}
+.reports-scope-select:focus { outline: none; border-color: var(--violet); }
+
+.kpi-row {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+  gap: 14px;
+  margin-bottom: 24px;
+}
+.kpi-card {
+  background: var(--void-2);
+  border: 1px solid var(--glass-border);
+  border-radius: var(--radius);
+  padding: 16px 18px;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+.kpi-label {
+  font-size: 0.72rem;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: var(--text-dim);
+  font-weight: 700;
+}
+.kpi-value {
+  font-family: var(--display);
+  font-weight: 700;
+  font-size: 1.5rem;
+  color: var(--text);
+}
+
+.reports-grid-2 {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 24px;
+}
+@media (max-width: 900px) {
+  .reports-grid-2 { grid-template-columns: 1fr; }
+}
+
+/* ==================== Chat assistant page ==================== */
+
+.chat-page { display: flex; flex-direction: column; height: calc(100vh - 190px); max-height: 720px; }
+
+.chat-window {
+  flex: 1;
+  overflow-y: auto;
+  background: var(--void-2);
+  border: 1px solid var(--glass-border);
+  border-radius: var(--radius);
+  display: flex;
+  flex-direction: column;
+  margin: 16px 0;
+}
+
+/* -- Empty state: a focused welcome card, not a big empty box -- */
+.chat-empty {
+  margin: auto;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  text-align: center;
+  gap: 10px;
+  max-width: 420px;
+  padding: 40px 24px;
+}
+.chat-empty-icon {
+  width: 44px;
+  height: 44px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: color-mix(in srgb, var(--violet) 14%, transparent);
+  color: var(--violet);
+  margin-bottom: 6px;
+}
+.chat-empty h3 { margin: 0; font-family: var(--display); font-size: 1.15rem; color: var(--text); }
+.chat-empty p { margin: 0; color: var(--text-dim); font-size: 0.9rem; line-height: 1.55; }
+
+.chat-suggestions {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  width: 100%;
+  margin-top: 14px;
+}
+.chat-suggestion-chip {
+  background: var(--glass);
+  border: 1px solid var(--glass-border);
+  border-radius: var(--radius-sm);
+  padding: 11px 16px;
+  color: var(--text);
+  font-size: 0.85rem;
+  font-family: var(--body);
+  text-align: left;
+  cursor: pointer;
+  transition: border-color 0.15s ease, background 0.15s ease;
+}
+.chat-suggestion-chip:hover { border-color: var(--violet); background: color-mix(in srgb, var(--violet) 8%, transparent); }
+
+/* -- Message list -- */
+.chat-messages { display: flex; flex-direction: column; gap: 14px; padding: 20px; }
+
+.chat-bubble {
+  max-width: 74%;
+  padding: 11px 15px;
+  border-radius: var(--radius-sm);
+  font-size: 0.92rem;
+  line-height: 1.5;
+}
+.chat-bubble p { margin: 0; white-space: pre-wrap; }
+.chat-user {
+  align-self: flex-end;
+  background: var(--grad-signature);
+  color: var(--on-brand);
+  border-bottom-right-radius: 4px;
+}
+.chat-assistant {
+  align-self: flex-start;
+  background: var(--glass);
+  border: 1px solid var(--glass-border);
+  color: var(--text);
+  border-bottom-left-radius: 4px;
+}
+
+.chat-typing { display: flex; gap: 4px; padding: 15px; align-items: center; }
+.chat-typing-dot {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: var(--text-faint);
+  animation: chatTypingBounce 1.2s ease-in-out infinite;
+}
+.chat-typing-dot:nth-child(2) { animation-delay: 0.15s; }
+.chat-typing-dot:nth-child(3) { animation-delay: 0.3s; }
+@keyframes chatTypingBounce {
+  0%, 60%, 100% { opacity: 0.35; transform: translateY(0); }
+  30% { opacity: 1; transform: translateY(-3px); }
+}
+
+.chat-action-card {
+  margin-top: 10px;
+  padding-top: 10px;
+  border-top: 1px solid var(--glass-border-hi);
+}
+.chat-action-label { font-weight: 700; margin-bottom: 8px !important; }
+.chat-action-buttons { display: flex; gap: 8px; }
+.chat-action-done { color: var(--mint); font-weight: 700; margin-top: 8px !important; }
+
+/* -- Input row -- */
+.chat-input-row {
+  display: flex;
+  gap: 10px;
+  align-items: flex-end;
+  background: var(--void-2);
+  border: 1px solid var(--glass-border);
+  border-radius: var(--radius);
+  padding: 8px 8px 8px 16px;
+}
+.chat-input {
+  flex: 1;
+  resize: none;
+  background: none;
+  border: none;
+  outline: none;
+  appearance: none;
+  color: var(--text);
+  font-family: var(--body);
+  font-size: 0.92rem;
+  line-height: 1.5;
+  padding: 8px 0;
+  max-height: 120px;
+}
+.chat-input::placeholder { color: var(--text-faint); }
+.chat-send-btn {
+  flex-shrink: 0;
+  width: 38px;
+  height: 38px;
+  border-radius: 50%;
+  border: none;
+  background: var(--grad-signature);
+  color: var(--on-brand);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  transition: transform 0.15s ease, opacity 0.15s ease;
+}
+.chat-send-btn:hover:not(:disabled) { transform: scale(1.06); }
+.chat-send-btn:disabled { opacity: 0.4; cursor: not-allowed; }
 
 .interpreted { font-size: 0.78rem; color: var(--text-dim); font-family: var(--mono); margin-top: 10px; }
 
@@ -980,7 +1623,7 @@ button, input, select { font-family: inherit; font-size: 1rem; }
 .inline-form input:focus, .inline-form select:focus {
   outline: none;
   border-color: var(--cyan);
-  box-shadow: 0 0 0 3px rgba(45, 212, 255, 0.15);
+  box-shadow: var(--shadow-focus);
 }
 .inline-form input[type='number'] { width: 120px; }
 
@@ -1079,7 +1722,7 @@ button, input, select { font-family: inherit; font-size: 1rem; }
 
 .account-chip {
   position: relative;
-  background: var(--glass);
+  background: var(--void-2);
   border: 1px solid var(--glass-border);
   border-radius: var(--radius-sm);
   padding: 15px;
@@ -1087,8 +1730,7 @@ button, input, select { font-family: inherit; font-size: 1rem; }
   display: flex;
   flex-direction: column;
   gap: 9px;
-  backdrop-filter: blur(12px);
-  transition: transform 0.18s ease, border-color 0.18s ease, box-shadow 0.18s ease;
+  transition: border-color 0.18s ease, box-shadow 0.18s ease;
   overflow: hidden;
 }
 .account-chip::before {
@@ -1100,9 +1742,8 @@ button, input, select { font-family: inherit; font-size: 1rem; }
 }
 .account-chip.type-cash::before { background: var(--amber); }
 .account-chip:hover {
-  transform: translateY(-3px);
-  border-color: var(--glass-border-hi);
-  box-shadow: 0 14px 30px rgba(0, 0, 0, 0.4);
+  border-color: var(--violet);
+  box-shadow: 0 4px 14px rgba(0, 0, 0, 0.08);
 }
 
 .account-chip-top { display: flex; align-items: center; justify-content: space-between; color: var(--cyan); }
@@ -1141,7 +1782,7 @@ button, input, select { font-family: inherit; font-size: 1rem; }
   transform: none !important;
 }
 .new-chip::before { display: none; }
-.new-chip:hover { color: var(--cyan); border-color: var(--cyan); background: rgba(45, 212, 255, 0.05); transform: none !important; }
+.new-chip:hover { color: var(--cyan); border-color: var(--cyan); background: var(--color-primary-dim); transform: none !important; }
 .new-chip-form {
   width: 210px;
   box-shadow: none !important;
@@ -1169,8 +1810,8 @@ button, input, select { font-family: inherit; font-size: 1rem; }
   font-weight: 700;
   align-self: flex-start;
 }
-.pill-active { background: rgba(42, 240, 192, 0.12); color: var(--mint); box-shadow: 0 0 8px rgba(42, 240, 192, 0.3); }
-.pill-inactive { background: rgba(255, 77, 109, 0.10); color: var(--danger); }
+.pill-active { background: var(--color-primary-dim); color: var(--mint); }
+.pill-inactive { background: rgba(217, 112, 107, 0.10); color: var(--danger); }
 
 .account-chip-status-row {
   display: flex;
@@ -1218,13 +1859,34 @@ button, input, select { font-family: inherit; font-size: 1rem; }
 }
 
 .ledger-table-row {
+  position: relative;
   border-bottom: 1px solid var(--glass-border);
   font-size: 0.9rem;
   border-radius: 8px;
-  transition: background 0.15s;
+  transition: background 0.2s ease, transform 0.2s ease, box-shadow 0.2s ease;
+  overflow: hidden;
+}
+.ledger-table-row::before {
+  content: '';
+  position: absolute;
+  left: 0;
+  top: 8px;
+  bottom: 8px;
+  width: 3px;
+  border-radius: 0 3px 3px 0;
+  background: var(--violet);
+  opacity: 0;
+  transform: scaleY(0.4);
+  transform-origin: center;
+  transition: opacity 0.2s ease, transform 0.2s ease;
 }
 .ledger-table-row.clickable { cursor: pointer; }
-.ledger-table-row:hover { background: rgba(139, 92, 246, 0.08); }
+.ledger-table-row:hover {
+  background: var(--color-primary-dim);
+  transform: translateX(2px);
+  box-shadow: 0 2px 10px rgba(0, 0, 0, 0.06);
+}
+.ledger-table-row:hover::before { opacity: 1; transform: scaleY(1); }
 .ledger-table-row:last-child { border-bottom: none; }
 
 .note-preview {
@@ -1279,7 +1941,7 @@ button, input, select { font-family: inherit; font-size: 1rem; }
   display: inline-block;
   justify-self: start;
   text-transform: uppercase;
-  box-shadow: 0 0 10px currentColor;
+  box-shadow: none;
   background: color-mix(in srgb, currentColor 12%, transparent);
 }
 
@@ -1292,6 +1954,12 @@ button, input, select { font-family: inherit; font-size: 1rem; }
    scroll — rather than re-styling every rule from scratch. */
 
 @media (max-width: 900px) {
+  /* Drawer mode: it's fixed-position and overlays the page, so it must not
+     also participate in the shell's flex row. */
+  .app-shell { flex-direction: column; }
+  .sidebar-drawer { position: fixed; height: 100%; }
+  .page-layout { padding: var(--space-8) var(--space-5) 70px; }
+
   .auth-page { grid-template-columns: 1fr; }
   .auth-hero { padding: 40px; min-height: 240px; border-right: none; border-bottom: 1px solid var(--glass-border); }
   .hero-content { margin-left: 0; }
@@ -1303,6 +1971,11 @@ button, input, select { font-family: inherit; font-size: 1rem; }
 @media (max-width: 640px) {
   .top-bar { padding: 14px 18px; }
   .top-bar-right { gap: 12px; }
+  /* The rail is replaced outright by the drawer below 900px (Sidebar.jsx
+     switches render path at MOBILE_QUERY), so the old horizontal-strip
+     rules are gone — the drawer keeps the vertical layout it has on
+     desktop instead of reflowing into a scrolling row. */
+  .sidebar-nav-soon { display: none; }
   .user-name { max-width: 110px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
   .page { padding: 28px 16px 60px; }
   .page-title { font-size: clamp(1.4rem, 6vw, 1.95rem); }
@@ -1490,3 +2163,60 @@ button, input, select { font-family: inherit; font-size: 1rem; }
   border-top: 1px solid var(--glass-border);
 }
 .link-btn.small { font-size: 0.75rem; }
+
+
+/* ==================== Phase 2: interaction states ====================
+   Transform (lift/press) is owned by Framer Motion via cardVariants /
+   buttonVariants; colour and elevation stay in CSS. Splitting it this way
+   keeps box-shadow — which is expensive to animate per-frame — on the
+   compositor-friendly CSS path instead of being driven by rAF. */
+
+.company-card,
+.card,
+.kpi-card {
+  transition: border-color var(--duration-fast) var(--ease-out),
+              box-shadow var(--duration-fast) var(--ease-out),
+              background-color var(--duration-base) var(--ease-out);
+}
+.company-card:hover,
+.card:hover {
+  border-color: var(--glass-border-hi);
+  box-shadow: var(--shadow-md);
+}
+.company-card:focus-visible,
+.card:focus-visible {
+  outline: 2px solid var(--color-primary);
+  outline-offset: 2px;
+}
+
+/* Buttons that aren't wrapped in Framer yet still get a tactile press,
+   so the whole product feels consistent while later phases migrate them. */
+.btn-primary,
+.btn-ghost,
+.link-btn,
+.back-link {
+  transition: background-color var(--duration-fast) var(--ease-out),
+              border-color var(--duration-fast) var(--ease-out),
+              color var(--duration-fast) var(--ease-out),
+              transform var(--duration-fast) var(--ease-out),
+              box-shadow var(--duration-fast) var(--ease-out);
+}
+.btn-primary:hover:not(:disabled),
+.btn-ghost:hover:not(:disabled) { transform: translateY(-1px); }
+.btn-primary:active:not(:disabled),
+.btn-ghost:active:not(:disabled) { transform: scale(0.98); }
+
+/* Search: border and ring only — no glow, per the brief. */
+.search-box {
+  transition: border-color var(--duration-fast) var(--ease-out),
+              box-shadow var(--duration-fast) var(--ease-out);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .company-card:hover,
+  .card:hover,
+  .btn-primary:hover:not(:disabled),
+  .btn-ghost:hover:not(:disabled),
+  .btn-primary:active:not(:disabled),
+  .btn-ghost:active:not(:disabled) { transform: none; }
+}

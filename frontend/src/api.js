@@ -80,6 +80,24 @@ export const api = {
   deleteAccount: (token, id) => request(`/accounts/${id}`, { method: 'DELETE', token }),
 
   listTransfers: (token, companyId) => request(`/transfers?company_id=${companyId}`, { token }),
+
+  // The backend requires company_id per call (a transfer can only be
+  // listed through a company you belong to) — there's no single endpoint
+  // for "every transfer across every company I'm in." This loops over the
+  // user's companies and merges results, deduping by transfer id since a
+  // transfer between two of the user's own companies would otherwise show
+  // up twice (once from each side's query).
+  listAllTransfers: async (token) => {
+    const companies = await request('/companies', { token })
+    const perCompany = await Promise.all(
+      companies.map((c) => request(`/transfers?company_id=${c.id}`, { token }))
+    )
+    const byId = new Map()
+    for (const list of perCompany) {
+      for (const t of list) byId.set(t.id, t)
+    }
+    return Array.from(byId.values()).sort((a, b) => new Date(b.transaction_date) - new Date(a.transaction_date))
+  },
   // No company_id here — the API derives which company this is recorded
   // under from the from_account itself. to_account_id can be ANY account
   // that exists, including ones in companies the user has no access to.
@@ -116,6 +134,8 @@ export const api = {
   getSummary: (token, companyId) => request(`/companies/${companyId}/transfers/summary`, { token }),
   getInsights: (token, companyId) => request(`/companies/${companyId}/insights`, { token }),
   getOverviewInsights: (token) => request('/insights/overview', { token }),
+  getReports: (token, companyId) => request(`/reports${companyId ? `?company_id=${companyId}` : ''}`, { token }),
+  chat: (token, message, history) => request('/chat', { method: 'POST', token, body: { message, history } }),
 
   listMembers: (token, companyId) => request(`/companies/${companyId}/members`, { token }),
   addMember: (token, companyId, email) =>
@@ -136,8 +156,8 @@ export const TRANSFER_TYPES = [
   'CASH ACCOUNT TRANSFER',
 ]
 export const STATUS_COLORS = {
-  PENDING: '#ffb84d',
-  COMPLETED: '#2af0c0',
-  CANCELLED: '#8d92c2',
-  REVERSED: '#c084fc',
+  PENDING: 'var(--color-warning)',
+  COMPLETED: 'var(--color-success)',
+  CANCELLED: 'var(--color-cancelled)',
+  REVERSED: 'var(--color-reversed)',
 }

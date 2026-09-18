@@ -1,5 +1,4 @@
 import { useState } from 'react'
-import lekhaLogo from '../assets/lekhaLogo.png'
 import { useT } from '../i18n.jsx'
 
 // ---------------------------------------------------------------------------
@@ -8,11 +7,22 @@ import { useT } from '../i18n.jsx'
 
 const iconProps = { width: 18, height: 18, viewBox: '0 0 24 24', fill: 'none', stroke: 'currentColor', strokeWidth: 1.6, strokeLinecap: 'round', strokeLinejoin: 'round' }
 
-// The Lekha mark: the initial "L" whose foot resolves into a checkmark —
-// a ledger entry that's been verified. Not a decorative shape; it encodes
-// what the product actually does (track and reconcile).
+// The Lekha mark: an open book/ledger in a flat rounded square, in the
+// brand accent color. Matches the professional reference style directly —
+// a solid icon-square, not a decorative gradient shape.
 export const IconLekhaMark = ({ width = 26, height = 26, ...p }) => (
-  <img src={lekhaLogo} width={width} height={height} alt="Lekha" style={{ display: 'block', objectFit: 'contain' }} {...p} />
+  <svg width={width} height={height} viewBox="0 0 32 32" fill="none" {...p}>
+    <rect width="32" height="32" rx="9" fill="var(--violet)" />
+    <path
+      d="M16 12.5c-1.5-1.3-3.4-2-5.5-2-.8 0-1.5.6-1.5 1.4v8.6c0 .8.7 1.4 1.5 1.4 2.1 0 4 .7 5.5 2 1.5-1.3 3.4-2 5.5-2 .8 0 1.5-.6 1.5-1.4v-8.6c0-.8-.7-1.4-1.5-1.4-2.1 0-4 .7-5.5 2z"
+      fill="none"
+      stroke="var(--on-brand)"
+      strokeWidth="1.7"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+    />
+    <path d="M16 12.5v9.6" stroke="var(--on-brand)" strokeWidth="1.7" strokeLinecap="round" />
+  </svg>
 )
 
 export const IconBank = (p) => (
@@ -57,6 +67,27 @@ export const IconCrown = (p) => (
 export const IconClose = (p) => (
   <svg {...iconProps} {...p}><path d="M6 6l12 12M18 6L6 18" /></svg>
 )
+export const IconGrid = (p) => (
+  <svg {...iconProps} {...p}><rect x="3" y="3" width="8" height="8" rx="1.5" /><rect x="13" y="3" width="8" height="8" rx="1.5" /><rect x="3" y="13" width="8" height="8" rx="1.5" /><rect x="13" y="13" width="8" height="8" rx="1.5" /></svg>
+)
+export const IconWallet = (p) => (
+  <svg {...iconProps} {...p}><path d="M3 7a2 2 0 012-2h12a2 2 0 012 2v10a2 2 0 01-2 2H5a2 2 0 01-2-2V7z" /><path d="M16 12h3" /><path d="M3 9h18" /></svg>
+)
+export const IconSwap = (p) => (
+  <svg {...iconProps} {...p}><path d="M4 8h13M17 8l-3.5-3.5M17 8l-3.5 3.5" /><path d="M20 16H7M7 16l3.5-3.5M7 16l3.5 3.5" /></svg>
+)
+export const IconList = (p) => (
+  <svg {...iconProps} {...p}><path d="M8 6h13M8 12h13M8 18h13" /><path d="M3 6h.01M3 12h.01M3 18h.01" /></svg>
+)
+export const IconChart = (p) => (
+  <svg {...iconProps} {...p}><path d="M4 20V10M11 20V4M18 20v-7" /><path d="M3 20h18" /></svg>
+)
+export const IconSettings = (p) => (
+  <svg {...iconProps} {...p}><circle cx="12" cy="12" r="3" /><path d="M19.4 15a1.65 1.65 0 00.33 1.82l.06.06a2 2 0 11-2.83 2.83l-.06-.06a1.65 1.65 0 00-1.82-.33 1.65 1.65 0 00-1 1.51V21a2 2 0 01-4 0v-.09a1.65 1.65 0 00-1-1.51 1.65 1.65 0 00-1.82.33l-.06.06a2 2 0 11-2.83-2.83l.06-.06a1.65 1.65 0 00.33-1.82 1.65 1.65 0 00-1.51-1H3a2 2 0 010-4h.09a1.65 1.65 0 001.51-1 1.65 1.65 0 00-.33-1.82l-.06-.06a2 2 0 112.83-2.83l.06.06a1.65 1.65 0 001.82.33H9a1.65 1.65 0 001-1.51V3a2 2 0 014 0v.09a1.65 1.65 0 001 1.51 1.65 1.65 0 001.82-.33l.06-.06a2 2 0 112.83 2.83l-.06.06a1.65 1.65 0 00-.33 1.82V9a1.65 1.65 0 001.51 1H21a2 2 0 010 4h-.09a1.65 1.65 0 00-1.51 1z" /></svg>
+)
+export const IconLogout = (p) => (
+  <svg {...iconProps} {...p}><path d="M9 21H5a2 2 0 01-2-2V5a2 2 0 012-2h4" /><path d="M16 17l5-5-5-5" /><path d="M21 12H9" /></svg>
+)
 export const IconCheck = (p) => (
   <svg {...iconProps} {...p}><path d="M4 12l5 5L20 6" /></svg>
 )
@@ -64,6 +95,17 @@ export const IconCamera = (p) => (
   <svg {...iconProps} {...p}>
     <path d="M4 8h3l1.5-2.5h7L17 8h3a1 1 0 011 1v10a1 1 0 01-1 1H4a1 1 0 01-1-1V9a1 1 0 011-1z" />
     <circle cx="12" cy="14" r="3.5" />
+  </svg>
+)
+export const IconChat = (p) => (
+  <svg {...iconProps} {...p}>
+    <path d="M21 11.5a8.5 8.5 0 01-8.5 8.5 8.4 8.4 0 01-4-1L3 20l1.1-3.9A8.5 8.5 0 1121 11.5z" />
+  </svg>
+)
+export const IconSend = (p) => (
+  <svg {...iconProps} {...p}>
+    <path d="M22 2L11 13" />
+    <path d="M22 2l-7 20-4-9-9-4 20-7z" />
   </svg>
 )
 

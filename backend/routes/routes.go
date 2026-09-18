@@ -61,6 +61,9 @@ func RegisterRoutes(r *gin.Engine) {
 		insights.GET("/overview", handlers.GetOverviewInsights) // AI-phrased summary across every company the user belongs to
 	}
 
+	protected.GET("/reports", handlers.GetReports)      // ?company_id=<optional>, omit for the global cross-company report
+	protected.POST("/chat", handlers.ChatWithAssistant) // read Q&A + proposed (never auto-executed) money-moving actions
+
 	accounts := protected.Group("/accounts")
 	{
 		accounts.POST("", handlers.CreateAccount)

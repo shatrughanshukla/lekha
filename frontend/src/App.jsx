@@ -1,10 +1,14 @@
 import { useState, useEffect } from 'react'
+import { Routes, Route, Navigate, useNavigate } from 'react-router-dom'
 import AuthScreen from './components/AuthScreen.jsx'
+import AppShell from './components/AppShell.jsx'
 import Dashboard from './components/Dashboard.jsx'
-import CompanyView from './components/CompanyView.jsx'
-import ProfileModal from './components/ProfileModal.jsx'
+import CompanyRoute from './components/CompanyRoute.jsx'
+import AccountsPage from './components/AccountsPage.jsx'
+import TransferLedgerPage from './components/TransferLedgerPage.jsx'
+import ReportsPage from './components/ReportsPage.jsx'
+import ChatPage from './components/ChatPage.jsx'
 import ResetPasswordScreen from './components/ResetPasswordScreen.jsx'
-import { IconLekhaMark, IconSun, IconMoon } from './components/Shared.jsx'
 import { useT } from './i18n.jsx'
 import { api } from './api.js'
 
@@ -26,10 +30,7 @@ export default function App() {
     const raw = localStorage.getItem('lekha_user')
     return raw ? JSON.parse(raw) : null
   })
-  const [company, setCompany] = useState(null)
   const [theme, setTheme] = useState(() => localStorage.getItem('lekha_theme') || 'dark')
-  const [showProfile, setShowProfile] = useState(false)
-  const [avatarBroken, setAvatarBroken] = useState(false)
   const [showResetScreen, setShowResetScreen] = useState(!!initialResetToken)
   const [verifyBannerMsg, setVerifyBannerMsg] = useState(null)
   const [verifyBannerDismissed, setVerifyBannerDismissed] = useState(false)
@@ -96,10 +97,6 @@ export default function App() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [token])
 
-  function toggleTheme() {
-    setTheme((t) => (t === 'dark' ? 'light' : 'dark'))
-  }
-
   function toggleLang() {
     const next = lang === 'en' ? 'hi' : 'en'
     setLang(next)
@@ -115,7 +112,6 @@ export default function App() {
   function handleProfileUpdated(updatedUser) {
     localStorage.setItem('lekha_user', JSON.stringify(updatedUser))
     setUser(updatedUser)
-    setAvatarBroken(false)
   }
 
   function handleAuthed(newToken, newUser, mode) {
@@ -142,7 +138,6 @@ export default function App() {
     localStorage.removeItem('lekha_user')
     setToken('')
     setUser(null)
-    setCompany(null)
   }
 
   async function resendVerification() {
@@ -169,79 +164,45 @@ export default function App() {
     )
   }
 
-  if (!token || !user) {
-    return <AuthScreen onAuthed={handleAuthed} />
+  const shellProps = {
+    token, user, theme, setTheme, lang, toggleLang,
+    onProfileUpdated: handleProfileUpdated, signOut,
+    verifyBannerMsg, setVerifyBannerMsg, verifyBannerDismissed, setVerifyBannerDismissed,
+    resendingVerification, resendVerification,
   }
 
   return (
-    <div className="app-shell">
-      <header className="top-bar">
-        <div className="wordmark small"><IconLekhaMark />Lekha</div>
-        <div className="top-bar-right">
-          <button className="lang-toggle" onClick={toggleLang} title={t('lang_switch_title')}>
-            {lang === 'en' ? 'हिं' : 'EN'}
-          </button>
-          <button
-            className="theme-toggle"
-            onClick={toggleTheme}
-            title={theme === 'dark' ? t('theme_to_light') : t('theme_to_dark')}
-          >
-            {theme === 'dark' ? <IconSun /> : <IconMoon />}
-          </button>
-          <button className="user-name-btn" onClick={() => setShowProfile(true)} title={t('edit_profile')}>
-            {user.profile_picture_url && !avatarBroken ? (
-              <img
-                src={user.profile_picture_url}
-                alt={user.name}
-                className="user-avatar-sm"
-                onError={() => setAvatarBroken(true)}
-              />
-            ) : (
-              <span className="user-avatar-sm user-avatar-fallback">{user.name?.[0]?.toUpperCase() || '?'}</span>
-            )}
-            <span className="user-name">{user.name}</span>
-          </button>
-          <button className="btn-ghost" onClick={signOut}>
-            {t('sign_out')}
-          </button>
-        </div>
-      </header>
+    <Routes>
+      <Route
+        path="/"
+        element={token && user ? <Navigate to="/app" replace /> : <AuthScreen onAuthed={handleAuthed} />}
+      />
 
-      {showProfile && (
-        <ProfileModal
-          token={token}
-          user={user}
-          onClose={() => setShowProfile(false)}
-          onUpdated={handleProfileUpdated}
-        />
-      )}
+      <Route path="/app" element={<AppShell {...shellProps} />}>
+        <Route index element={<DashboardRoute token={token} user={user} />} />
+        <Route path="accounts" element={<AccountsPage token={token} user={user} />} />
+        <Route path="transfers" element={<TransferLedgerPage token={token} user={user} scope="mine" />} />
+        <Route path="transactions" element={<TransferLedgerPage token={token} user={user} scope="all" />} />
+        <Route path="assistant" element={<ChatPage token={token} user={user} />} />
+        <Route path="reports" element={<ReportsPage token={token} user={user} />} />
+        <Route path="companies/:id" element={<CompanyRoute token={token} user={user} />} />
+      </Route>
 
-      {verifyBannerMsg && (
-        <div className={`toast-banner toast-${verifyBannerMsg.type}`}>
-          {verifyBannerMsg.text}
-          <button className="toast-dismiss" onClick={() => setVerifyBannerMsg(null)}>×</button>
-        </div>
-      )}
+      <Route path="*" element={<Navigate to={token && user ? '/app' : '/'} replace />} />
+    </Routes>
+  )
+}
 
-      {!user.email_verified && !verifyBannerDismissed && (
-        <div className="verify-banner">
-          <span>{t('verify_email_banner')}</span>
-          <div className="verify-banner-actions">
-            <button className="link-btn small" onClick={resendVerification} disabled={resendingVerification}>
-              {resendingVerification ? '…' : t('resend_verification_link')}
-            </button>
-            <button className="link-btn small" onClick={() => setVerifyBannerDismissed(true)}>
-              {t('dismiss')}
-            </button>
-          </div>
-        </div>
-      )}
-
-      {company ? (
-        <CompanyView token={token} user={user} company={company} onBack={() => setCompany(null)} />
-      ) : (
-        <Dashboard token={token} user={user} onOpenCompany={setCompany} />
-      )}
-    </div>
+// Dashboard navigates to a company via a real route instead of local state,
+// carrying the already-loaded object in router state so CompanyRoute can
+// skip a redundant fetch on the common click-through path.
+function DashboardRoute({ token, user }) {
+  const navigate = useNavigate()
+  return (
+    <Dashboard
+      token={token}
+      user={user}
+      onOpenCompany={(company) => navigate(`/app/companies/${company.id}`, { state: { company } })}
+    />
   )
 }

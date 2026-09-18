@@ -20,9 +20,14 @@ type geminiContent struct {
 	Parts []geminiPart `json:"parts"`
 }
 
+type geminiGenConfig struct {
+	ResponseMimeType string `json:"responseMimeType,omitempty"`
+}
+
 type geminiRequest struct {
-	Contents          []geminiContent `json:"contents"`
-	SystemInstruction *geminiContent  `json:"systemInstruction,omitempty"`
+	Contents          []geminiContent  `json:"contents"`
+	SystemInstruction *geminiContent   `json:"systemInstruction,omitempty"`
+	GenerationConfig  *geminiGenConfig `json:"generationConfig,omitempty"`
 }
 
 type geminiCandidate struct {
@@ -41,10 +46,24 @@ type geminiResponse struct {
 // reply.
 //
 // Requires GEMINI_API_KEY to be set in the environment. Every AI feature in
-// this codebase goes through this one function — there is no other place
-// that talks to an LLM — which makes it easy to audit exactly what gets
-// sent externally: only whatever string is passed in as userMessage.
+// this codebase goes through this function or CallGeminiJSON below — there
+// is no other place that talks to an LLM — which makes it easy to audit
+// exactly what gets sent externally: only whatever string is passed in as
+// userMessage.
 func CallGemini(systemPrompt, userMessage string) (string, error) {
+	return callGemini(systemPrompt, userMessage, false)
+}
+
+// CallGeminiJSON is the same as CallGemini, but tells Gemini to constrain
+// its output to valid JSON (via generationConfig.responseMimeType) instead
+// of relying on the model to follow a "respond only with JSON" instruction
+// in plain text — used by the chat assistant, which needs to reliably
+// parse a structured {reply, action} shape rather than free-form prose.
+func CallGeminiJSON(systemPrompt, userMessage string) (string, error) {
+	return callGemini(systemPrompt, userMessage, true)
+}
+
+func callGemini(systemPrompt, userMessage string, jsonMode bool) (string, error) {
 	apiKey := os.Getenv("GEMINI_API_KEY")
 	if apiKey == "" {
 		return "", fmt.Errorf("GEMINI_API_KEY is not set")
@@ -57,6 +76,9 @@ func CallGemini(systemPrompt, userMessage string) (string, error) {
 		SystemInstruction: &geminiContent{
 			Parts: []geminiPart{{Text: systemPrompt}},
 		},
+	}
+	if jsonMode {
+		reqBody.GenerationConfig = &geminiGenConfig{ResponseMimeType: "application/json"}
 	}
 
 	bodyBytes, err := json.Marshal(reqBody)
