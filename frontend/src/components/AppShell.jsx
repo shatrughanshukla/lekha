@@ -4,6 +4,7 @@ import { motion, AnimatePresence } from 'framer-motion'
 import Sidebar from './Sidebar.jsx'
 import Topbar from './Topbar.jsx'
 import ProfileModal from './ProfileModal.jsx'
+import CommandPalette from './CommandPalette.jsx'
 import { useT } from '../i18n.jsx'
 import {
   useMotionVariants, useMediaQuery, MOBILE_QUERY,
@@ -52,6 +53,10 @@ export default function AppShell({
 
   return (
     <div className="app-shell">
+      {/* Mounted once here (not per-page) so Cmd/Ctrl+K works everywhere
+          under /app and its own open/close state survives route changes. */}
+      <CommandPalette />
+
       <Sidebar
         theme={theme}
         onSetTheme={setTheme}

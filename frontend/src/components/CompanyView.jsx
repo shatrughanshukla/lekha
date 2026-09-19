@@ -3,12 +3,15 @@ import { api, ACCOUNT_TYPES, STATUS_COLORS } from '../api.js'
 import {
   Money, StampBadge, ErrorNote, DeleteButton, CopyableID,
   IconBank, IconCash, IconPlus, IconSparkle, IconSearch, IconArrowRight,
-  IconPeople, IconInfo, IconCrown,
+  IconPeople, IconInfo, IconCrown, IconBuilding,
 } from './Shared.jsx'
 import TransferDetail from './TransferDetail.jsx'
+import InsightsCard from './InsightsCard.jsx'
 import { getCached, setCached } from '../cache.js'
 import { useT } from '../i18n.jsx'
 import PageLayout from './PageLayout.jsx'
+import { motion } from 'framer-motion'
+import { useMotionVariants, staticCardVariants } from '../motion/index.js'
 
 // Mirrors lowBalanceThreshold in the backend — display text only. The
 // actual suggestion decision always comes from the server (a.suggested_action).
@@ -41,6 +44,8 @@ export default function CompanyView({ token, user, company, onBack }) {
 
   const [insights, setInsights] = useState(null)
   const [insightsLoading, setInsightsLoading] = useState(false)
+  const [insightsFetchedAt, setInsightsFetchedAt] = useState(null)
+  const heroVars = useMotionVariants(staticCardVariants)
 
   // Stale-while-revalidate: renders whatever's cached (if anything)
   // instantly, then this quietly fetches the real thing and updates both
@@ -191,6 +196,7 @@ export default function CompanyView({ token, user, company, onBack }) {
     setError('')
     try {
       setInsights(await api.getInsights(token, company.id))
+      setInsightsFetchedAt(Date.now())
     } catch (err) {
       setError(err.message)
     } finally {
@@ -227,9 +233,17 @@ export default function CompanyView({ token, user, company, onBack }) {
         {t('all_companies_back')}
       </button>
 
-      {/* ---------------- Statement header ---------------- */}
-      <div className="statement-header">
-        <h1 className="page-title">{company.company_name}</h1>
+      {/* ---------------- Company header ---------------- */}
+      <motion.div className="statement-header" variants={heroVars} initial="initial" animate="animate">
+        <div className="statement-header-top">
+          <span className="statement-avatar" aria-hidden="true"><IconBuilding /></span>
+          <div className="statement-heading">
+            <h1 className="page-title">{company.company_name}</h1>
+            <p className="statement-meta mono dim">
+              {t('opened_on', { date: new Date(company.created_at).toLocaleDateString(dateLocale, { year: 'numeric', month: 'short', day: 'numeric' }) })}
+            </p>
+          </div>
+        </div>
         <div className="stat-strip">
           <div className="stat">
             <span className="stat-label">{t('balance')}</span>
@@ -247,8 +261,15 @@ export default function CompanyView({ token, user, company, onBack }) {
             <span className="stat-label">{t('transfers_title')}</span>
             <span className="stat-value mono">{stats.transferCount}</span>
           </div>
+          <div className="stat-divider" />
+          <div className="stat">
+            <span className="stat-label">{t('hero_pending')}</span>
+            <span className={`stat-value mono${transfers.filter((tr) => tr.status === 'PENDING').length > 0 ? ' hero-stat-warning' : ''}`}>
+              {transfers.filter((tr) => tr.status === 'PENDING').length || t('no_pending')}
+            </span>
+          </div>
         </div>
-      </div>
+      </motion.div>
 
       <ErrorNote message={error} />
 
@@ -304,46 +325,15 @@ export default function CompanyView({ token, user, company, onBack }) {
       </section>
 
       {/* ---------------- Overview: insights + search side by side ---------------- */}
-      <div className="overview-row">
-        <section className="panel">
-          <div className="panel-head">
-            <h2><IconSparkle /> {t('insights_title')}</h2>
-            <button className="btn-ghost small" onClick={loadInsights} disabled={insightsLoading}>
-              {insightsLoading ? t('thinking') : insights ? t('refresh') : t('generate')}
-            </button>
-          </div>
-          {insights ? (
-            <p className="insight-text">
-              {insights.insight}
-              {insights.cached && <span className="cached-hint" title={t('cached_hint_title')}>{t('cached_label')}</span>}
-            </p>
-          ) : (
-            <p className="panel-hint">{t('company_insight_hint')}</p>
-          )}
-        </section>
-
-        <section className="panel">
-          <h2><IconSearch /> {t('search_transfers')}</h2>
-          <form className="inline-form" onSubmit={runSearch}>
-            <input
-              placeholder={t('search_placeholder')}
-              value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
-            />
-            <button className="btn-primary small" type="submit" disabled={searching || !searchQuery}>
-              {searching ? '…' : t('search_btn')}
-            </button>
-          </form>
-          {searchResults && (
-            <div className="interpreted">
-              {t('interpreted')}{' '}
-              {Object.entries(searchResults.interpreted_filters).filter(([, v]) => v).map(([k, v]) => `${k}=${v}`).join(', ') || t('no_filters')}
-              {' · '}
-              <button className="link-btn" onClick={() => { setSearchResults(null); setSearchQuery('') }}>{t('clear')}</button>
-            </div>
-          )}
-        </section>
-      </div>
+      <InsightsCard
+        title={t('insights_title')}
+        insights={insights}
+        loading={insightsLoading}
+        onGenerate={loadInsights}
+        emptyHint={t('company_insight_hint')}
+        fetchedAt={insightsFetchedAt}
+        compact
+      />
 
       {/* ---------------- Accounts ---------------- */}
       <section className="panel">
@@ -455,6 +445,30 @@ export default function CompanyView({ token, user, company, onBack }) {
               })()
             : t('type_auto_detect_hint')}
         </p>
+
+        {/* Compact search toolbar — was a standalone card, now lives right
+            above the table it filters (Phase 3 refinement, Problem 5). */}
+        <form className="ledger-search-toolbar" onSubmit={runSearch}>
+          <div className="search-box search-box-sm">
+            <IconSearch />
+            <input
+              placeholder={t('search_placeholder')}
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+            />
+          </div>
+          <button className="btn-ghost small" type="submit" disabled={searching || !searchQuery}>
+            {searching ? '…' : t('search_btn')}
+          </button>
+          {searchResults && (
+            <div className="interpreted">
+              {t('interpreted')}{' '}
+              {Object.entries(searchResults.interpreted_filters).filter(([, v]) => v).map(([k, v]) => `${k}=${v}`).join(', ') || t('no_filters')}
+              {' · '}
+              <button type="button" className="link-btn" onClick={() => { setSearchResults(null); setSearchQuery('') }}>{t('clear')}</button>
+            </div>
+          )}
+        </form>
 
         {shownTransfers.length === 0 ? (
           <div className="empty-state">{t('no_transfers')}</div>

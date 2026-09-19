@@ -67,6 +67,12 @@ export const IconCrown = (p) => (
 export const IconClose = (p) => (
   <svg {...iconProps} {...p}><path d="M6 6l12 12M18 6L6 18" /></svg>
 )
+export const IconClock = (p) => (
+  <svg {...iconProps} {...p}><circle cx="12" cy="12" r="8" /><path d="M12 8v4l3 2" /></svg>
+)
+export const IconBolt = (p) => (
+  <svg {...iconProps} {...p}><path d="M13 3L5 14h6l-1 7 8-11h-6l1-7z" /></svg>
+)
 export const IconGrid = (p) => (
   <svg {...iconProps} {...p}><rect x="3" y="3" width="8" height="8" rx="1.5" /><rect x="13" y="3" width="8" height="8" rx="1.5" /><rect x="3" y="13" width="8" height="8" rx="1.5" /><rect x="13" y="13" width="8" height="8" rx="1.5" /></svg>
 )
