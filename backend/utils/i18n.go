@@ -39,6 +39,7 @@ var messages = map[string]map[Lang]string{
 	"transfer_not_found": {LangEN: "transfer not found", LangHI: "ट्रांसफर नहीं मिला"},
 	"user_not_found":     {LangEN: "user not found", LangHI: "उपयोगकर्ता नहीं मिला"},
 	"no_user_with_email": {LangEN: "no user found with that email", LangHI: "उस ईमेल से कोई उपयोगकर्ता नहीं मिला"},
+	"conversation_not_found": {LangEN: "conversation not found", LangHI: "बातचीत नहीं मिली"},
 
 	// -- auth --
 	"invalid_email_or_password": {LangEN: "invalid email or password", LangHI: "अमान्य ईमेल या पासवर्ड"},
@@ -106,6 +107,7 @@ var messages = map[string]map[Lang]string{
 	// -- success messages --
 	"account_deleted":     {LangEN: "account deleted", LangHI: "खाता हटा दिया गया"},
 	"company_deleted":     {LangEN: "company deleted", LangHI: "कंपनी हटा दी गई"},
+	"conversation_deleted": {LangEN: "conversation deleted", LangHI: "बातचीत हटा दी गई"},
 	"member_added":        {LangEN: "member added", LangHI: "सदस्य जोड़ा गया"},
 	"member_removed":      {LangEN: "member removed", LangHI: "सदस्य हटाया गया"},
 	"member_role_updated": {LangEN: "member role updated", LangHI: "सदस्य की भूमिका अपडेट की गई"},
@@ -134,7 +136,14 @@ func LangFromContext(c *gin.Context) Lang {
 // translation shows up as an obvious ugly string during development
 // instead of silently rendering blank.
 func Msg(c *gin.Context, key string) string {
-	lang := LangFromContext(c)
+	return MsgForLang(LangFromContext(c), key)
+}
+
+// MsgForLang is Msg's lookup without needing a *gin.Context — for the rare
+// caller (e.g. runAssistantTurn in chat_handler.go, shared by both the
+// stateless /chat endpoint and the persisted conversation endpoints) that
+// already has a resolved Lang and isn't itself a Gin handler.
+func MsgForLang(lang Lang, key string) string {
 	if m, ok := messages[key]; ok {
 		if s, ok := m[lang]; ok {
 			return s

@@ -136,6 +136,11 @@ export const api = {
   getOverviewInsights: (token) => request('/insights/overview', { token }),
   getReports: (token, companyId) => request(`/reports${companyId ? `?company_id=${companyId}` : ''}`, { token }),
   chat: (token, message, history) => request('/chat', { method: 'POST', token, body: { message, history } }),
+  listConversations: (token) => request('/conversations', { token }),
+  getConversation: (token, id) => request(`/conversations/${id}`, { token }),
+  deleteConversation: (token, id) => request(`/conversations/${id}`, { method: 'DELETE', token }),
+  sendConversationMessage: (token, conversationId, message) =>
+    request('/conversations/messages', { method: 'POST', token, body: { conversation_id: conversationId || '', message } }),
 
   listMembers: (token, companyId) => request(`/companies/${companyId}/members`, { token }),
   addMember: (token, companyId, email) =>

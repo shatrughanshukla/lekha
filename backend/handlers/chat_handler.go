@@ -143,6 +143,12 @@ const chatSystemPromptHI = `आप Lekha ऐप में एक वित्त
 // frontend only sends after the user taps Confirm, using the exact same
 // endpoints (and therefore the exact same authorization) as the rest of
 // the app — this file never moves money itself.
+//
+// This endpoint itself stores nothing — it's the original stateless
+// shape, kept as-is for anything still calling it directly. Persisted,
+// multi-turn conversations (Phase 4) are handled by
+// conversation_handler.go, which calls runAssistantTurn below with
+// history loaded from the database instead of from the request body.
 func ChatWithAssistant(c *gin.Context) {
 	var input models.ChatRequest
 	if err := c.ShouldBindJSON(&input); err != nil {
@@ -153,26 +159,40 @@ func ChatWithAssistant(c *gin.Context) {
 	userID := c.GetString("user_id")
 	lang := utils.LangFromContext(c)
 
-	context, accounts, pending, err := buildChatContext(userID)
+	resp, err := runAssistantTurn(userID, lang, input.History, input.Message)
 	if err != nil {
 		utils.RespondDBError(c, err)
 		return
 	}
+
+	c.JSON(http.StatusOK, resp)
+}
+
+// runAssistantTurn is the actual "ask Gemini, validate the answer" core,
+// shared by ChatWithAssistant (stateless, history from the request) and
+// SendConversationMessage in conversation_handler.go (persisted, history
+// loaded from the messages table). Keeping this in one place means the
+// prompt, the context sent to the model, and the action-validation rules
+// can never drift between the two call paths.
+func runAssistantTurn(userID string, lang utils.Lang, history []models.ChatMessage, message string) (models.ChatResponse, error) {
+	context, accounts, pending, err := buildChatContext(userID)
+	if err != nil {
+		return models.ChatResponse{}, err
+	}
 	contextJSON, err := json.Marshal(context)
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": utils.Msg(c, "summary_prep_failed")})
-		return
+		return models.ChatResponse{Reply: utils.MsgForLang(lang, "summary_prep_failed")}, nil
 	}
 
 	var convo strings.Builder
-	for _, m := range input.History {
+	for _, m := range history {
 		convo.WriteString(m.Role)
 		convo.WriteString(": ")
 		convo.WriteString(m.Content)
 		convo.WriteString("\n")
 	}
 	convo.WriteString("user: ")
-	convo.WriteString(input.Message)
+	convo.WriteString(message)
 
 	prompt := chatSystemPromptEN
 	if lang == utils.LangHI {
@@ -182,21 +202,19 @@ func ChatWithAssistant(c *gin.Context) {
 
 	raw, err := utils.CallGeminiJSON(prompt, userMessage)
 	if err != nil {
-		c.JSON(http.StatusOK, models.ChatResponse{Reply: utils.Msg(c, "ai_summary_unavailable") + err.Error()})
-		return
+		return models.ChatResponse{Reply: utils.MsgForLang(lang, "ai_summary_unavailable") + err.Error()}, nil
 	}
 
 	var resp models.ChatResponse
 	if err := json.Unmarshal([]byte(strings.TrimSpace(raw)), &resp); err != nil {
-		c.JSON(http.StatusOK, models.ChatResponse{Reply: raw})
-		return
+		resp = models.ChatResponse{Reply: raw}
 	}
 
 	if resp.Action != nil && !actionIsValid(resp.Action, accounts, pending) {
 		resp.Action = nil
 	}
 
-	c.JSON(http.StatusOK, resp)
+	return resp, nil
 }
 
 func actionIsValid(action *models.ChatAction, accounts []chatAccountContext, pending []chatPendingTransferContext) bool {

@@ -64,6 +64,14 @@ func RegisterRoutes(r *gin.Engine) {
 	protected.GET("/reports", handlers.GetReports)      // ?company_id=<optional>, omit for the global cross-company report
 	protected.POST("/chat", handlers.ChatWithAssistant) // read Q&A + proposed (never auto-executed) money-moving actions
 
+	conversations := protected.Group("/conversations")
+	{
+		conversations.GET("", handlers.ListConversations)
+		conversations.GET("/:id", handlers.GetConversation)
+		conversations.DELETE("/:id", handlers.DeleteConversation)
+		conversations.POST("/messages", handlers.SendConversationMessage) // creates the conversation lazily when conversation_id is omitted
+	}
+
 	accounts := protected.Group("/accounts")
 	{
 		accounts.POST("", handlers.CreateAccount)
