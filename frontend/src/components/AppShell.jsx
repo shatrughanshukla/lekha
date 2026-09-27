@@ -70,8 +70,6 @@ export default function AppShell({
       <div className="main-column">
         <Topbar
           user={user}
-          theme={theme}
-          onToggleTheme={() => setTheme(theme === 'dark' ? 'light' : 'dark')}
           lang={lang}
           onToggleLang={toggleLang}
           avatarBroken={avatarBroken}

@@ -883,7 +883,6 @@ button, input, select { font-family: inherit; font-size: 1rem; }
               border-color var(--duration-fast) var(--ease-out);
 }
 .top-bar-icon-btn:hover { color: var(--text); background: var(--glass); border-color: var(--glass-border); }
-.top-bar-icon-swap { display: flex; }
 .top-bar-menu-btn { margin-right: auto; }
 .user-name { color: var(--text-dim); font-size: 0.9rem; }
 
@@ -1080,26 +1079,6 @@ button, input, select { font-family: inherit; font-size: 1rem; }
 .verify-banner .link-btn { color: var(--amber); }
 .verify-banner .link-btn:hover { color: var(--text); }
 
-.theme-toggle {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  width: 38px;
-  height: 38px;
-  border-radius: 50%;
-  background: var(--glass);
-  border: 1px solid var(--glass-border);
-  color: var(--text-dim);
-  cursor: pointer;
-  transition: color 0.15s, border-color 0.15s, box-shadow 0.15s, transform 0.15s;
-}
-.theme-toggle:hover {
-  color: var(--cyan);
-  border-color: var(--cyan);
-  box-shadow: none;
-  transform: rotate(15deg);
-}
-
 .lang-toggle {
   display: flex;
   align-items: center;
@@ -1144,7 +1123,7 @@ button, input, select { font-family: inherit; font-size: 1rem; }
   width: 100%;
 }
 .page-layout-default { max-width: 980px; }
-.page-layout-wide { max-width: 1240px; }
+.page-layout-wide { max-width: 1440px; }
 .page-layout-full { max-width: none; }
 .page-layout-flush { padding: 0; max-width: none; }
 
@@ -1944,7 +1923,7 @@ button, input, select { font-family: inherit; font-size: 1rem; }
 
 /* ==================== Ledger table ==================== */
 
-.ledger-table { border-left: 2px solid transparent; border-image: linear-gradient(var(--violet), var(--cyan)) 1; padding-left: 16px; margin-top: 24px; }
+.ledger-table { border-left: 2px solid var(--glass-border); padding-left: 16px; margin-top: 24px; }
 
 .ledger-table-head,
 .ledger-table-row {
@@ -1994,8 +1973,7 @@ button, input, select { font-family: inherit; font-size: 1rem; }
 .ledger-table-row.clickable { cursor: pointer; }
 .ledger-table-row:hover {
   background: var(--color-primary-dim);
-  transform: translateX(2px);
-  box-shadow: 0 2px 10px rgba(0, 0, 0, 0.06);
+  box-shadow: var(--shadow-xs);
 }
 .ledger-table-row:hover::before { opacity: 1; transform: scaleY(1); }
 .ledger-table-row:last-child { border-bottom: none; }
@@ -3080,3 +3058,153 @@ button.attention-row:hover .attention-row-arrow { color: var(--color-primary); t
 @media (prefers-reduced-motion: reduce) {
   button.attention-row:hover .attention-row-arrow { transform: none; }
 }
+
+
+/* =========================================================================
+   PHASE 5 REFINEMENT — Reports / financial analytics workspace
+   Composed as a deliberate grid: AI summary -> KPI row -> primary trend +
+   status donut -> two paired half-width rows -> detailed table. Every
+   panel in a row is sized so nothing is ever alone with empty space
+   beside it.
+   ========================================================================= */
+
+.reports-filters { display: flex; gap: var(--space-2); flex-wrap: wrap; }
+
+/* ---------------- KPI row: stacked label/value/delta, fixed height ---------------- */
+.reports-kpi-row {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: var(--space-3);
+  margin-bottom: var(--space-4); /* matches .reports-grid-row's rhythm below */
+}
+.reports-kpi-tile {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  min-height: 92px;
+  background: var(--void-2);
+  border: 1px solid var(--glass-border);
+  border-radius: var(--radius);
+  padding: var(--space-4);
+}
+.reports-kpi-label { font-size: var(--text-xs); color: var(--text-dim); font-weight: var(--weight-medium); }
+.reports-kpi-value {
+  font-size: var(--text-2xl);
+  font-weight: var(--weight-semibold);
+  color: var(--text);
+  letter-spacing: var(--tracking-tight);
+  line-height: 1.15;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.reports-kpi-positive { color: var(--color-success); }
+.reports-kpi-warning { color: var(--color-warning); }
+.reports-kpi-delta {
+  font-size: 0.74rem;
+  font-weight: var(--weight-medium);
+  color: var(--color-success);
+  margin-top: auto;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.reports-kpi-delta.down { color: var(--text-faint); }
+.reports-kpi-delta-spacer { display: block; height: 1.1em; margin-top: auto; } /* reserves the delta row's height so every tile is the same height even without one */
+
+@media (max-width: 900px) { .reports-kpi-row { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+@media (max-width: 560px) { .reports-kpi-row { grid-template-columns: 1fr; } }
+
+/* The AI summary panel sits directly above the KPI row. Its .panel comes
+   from the shared, app-wide panel style (28px margin-bottom -- see the
+   base .panel rule) which is noticeably larger than every other
+   section-to-section gap on this page (16px, .reports-grid-row below).
+   Overriding it here -- rather than touching the shared .panel rule,
+   which every page in the app uses -- keeps this fix local to Reports. */
+/* Single source of truth for vertical rhythm between Reports' top-level
+   sections (AI summary, KPI row, each analytics row). Every section
+   type's own margin-bottom is zeroed out below so there is exactly one
+   place that can produce a wrong gap, instead of three separate margins
+   (.panel, .reports-kpi-row, .reports-grid-row) that have to happen to
+   agree -- which is what silently broke before. */
+.reports-sections > * + * { margin-top: var(--space-4); }
+.reports-sections > * { margin-bottom: 0; }
+.reports-ai-summary .panel { margin-bottom: 0; }
+.reports-kpi-row { margin-bottom: 0; }
+.reports-grid-row { margin-bottom: 0; }
+
+/* ---------------- Chart grid rows ---------------- */
+.reports-grid-row {
+  display: grid;
+  gap: var(--space-4);
+  margin-bottom: var(--space-4);
+  align-items: stretch;
+}
+.reports-row-primary { grid-template-columns: 2fr 1fr; }
+.reports-row-half { grid-template-columns: 1fr 1fr; }
+
+.reports-chart-panel { display: flex; flex-direction: column; }
+.reports-chart-panel h2 { margin-bottom: 2px; }
+.reports-chart-subtitle { font-size: var(--text-xs); color: var(--text-faint); margin: 0 0 var(--space-3); }
+.reports-chart-panel:not(.reports-chart-subtitle-owner) h2 + .reports-donut-wrap,
+.reports-chart-panel h2 + .ranked-bar-list,
+.reports-chart-panel h2 + .reports-io-list { margin-top: var(--space-3); }
+
+/* A panel that ends up alone in a half-width row (e.g. Incoming/Outgoing
+   when the company filter hides "Top companies") spans both columns
+   instead of leaving the other half empty. */
+.reports-chart-full { grid-column: 1 / -1; }
+
+@media (max-width: 1100px) {
+  .reports-row-primary { grid-template-columns: 1fr; }
+}
+@media (max-width: 900px) {
+  .reports-row-half { grid-template-columns: 1fr; }
+  .reports-chart-full { grid-column: auto; }
+}
+
+/* ---------------- Donut + centered total ---------------- */
+.reports-donut-wrap { position: relative; }
+.reports-donut-center {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  pointer-events: none;
+}
+.reports-donut-total { font-size: var(--text-xl); font-weight: var(--weight-semibold); color: var(--text); line-height: 1.1; }
+.reports-donut-label { font-size: 0.68rem; color: var(--text-faint); }
+
+.reports-status-legend {
+  list-style: none;
+  margin: var(--space-2) 0 0;
+  padding: 0;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px var(--space-4);
+}
+.reports-status-legend li {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: var(--text-xs);
+  color: var(--text-body);
+}
+.reports-status-legend li .mono { margin-left: 2px; color: var(--text-faint); }
+.reports-status-swatch { width: 7px; height: 7px; border-radius: var(--radius-full); flex-shrink: 0; }
+
+/* ---------------- Ranked bar list (Top companies / Top accounts) ---------------- */
+.ranked-bar-list { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: var(--space-3); flex: 1; justify-content: center; }
+.ranked-bar-row-top { display: flex; align-items: baseline; justify-content: space-between; gap: var(--space-3); margin-bottom: 5px; }
+.ranked-bar-name { font-size: var(--text-sm); color: var(--text); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.ranked-bar-sublabel { color: var(--text-faint); font-weight: var(--weight-normal); }
+.ranked-bar-value { font-size: var(--text-sm); color: var(--text-dim); flex-shrink: 0; }
+.ranked-bar-track { height: 6px; border-radius: var(--radius-full); background: var(--glass); overflow: hidden; }
+.ranked-bar-fill { height: 100%; border-radius: var(--radius-full); transition: width var(--duration-slow) var(--ease-out); }
+
+/* ---------------- Incoming / outgoing ---------------- */
+.reports-io-list { display: flex; flex-direction: column; gap: var(--space-4); flex: 1; justify-content: center; }
+.reports-io-row-top { display: flex; align-items: baseline; justify-content: space-between; margin-bottom: 6px; font-size: var(--text-sm); color: var(--text); }
+.reports-io-row-top .mono { color: var(--text-dim); }

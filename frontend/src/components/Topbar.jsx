@@ -1,9 +1,9 @@
 import { motion, AnimatePresence } from 'framer-motion'
-import { Sun, Moon, LogOut, Menu } from 'lucide-react'
+import { LogOut, Menu } from 'lucide-react'
 import { useT } from '../i18n.jsx'
 import {
   useMotionVariants, useMediaQuery, MOBILE_QUERY,
-  iconButtonVariants, buttonVariants, duration, easing,
+  iconButtonVariants, buttonVariants, easing,
 } from '../motion/index.js'
 
 /**
@@ -15,7 +15,7 @@ import {
  * styling, which keeps it quiet while the page below it changes.
  */
 export default function Topbar({
-  user, theme, onToggleTheme, lang, onToggleLang,
+  user, lang, onToggleLang,
   avatarBroken, onAvatarError, onOpenProfile, onSignOut,
   onOpenMobileNav,
 }) {
@@ -61,32 +61,6 @@ export default function Topbar({
               transition={{ duration: 0.12, ease: easing.out }}
             >
               {lang === 'en' ? 'हिं' : 'EN'}
-            </motion.span>
-          </AnimatePresence>
-        </motion.button>
-
-        <motion.button
-          className="top-bar-icon-btn theme-toggle"
-          onClick={onToggleTheme}
-          variants={iconBtn}
-          initial="rest"
-          whileHover="hover"
-          whileTap="tap"
-          title={theme === 'dark' ? t('theme_to_light') : t('theme_to_dark')}
-        >
-          {/* Sun and moon rotate through each other — the one place in the
-              header a little character is worth it, since it's the control
-              people touch most often. */}
-          <AnimatePresence mode="wait" initial={false}>
-            <motion.span
-              key={theme}
-              className="top-bar-icon-swap"
-              initial={{ opacity: 0, rotate: -35, scale: 0.8 }}
-              animate={{ opacity: 1, rotate: 0, scale: 1 }}
-              exit={{ opacity: 0, rotate: 35, scale: 0.8 }}
-              transition={{ duration: duration.fast, ease: easing.out }}
-            >
-              {theme === 'dark' ? <Sun size={17} /> : <Moon size={17} />}
             </motion.span>
           </AnimatePresence>
         </motion.button>

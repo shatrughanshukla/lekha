@@ -36,7 +36,11 @@ type chatPendingTransferContext struct {
 // invented — it's the same data the rest of the app already exposes to
 // this user, just packaged for the model in one place.
 func buildChatContext(userID string) (map[string]interface{}, []chatAccountContext, []chatPendingTransferContext, error) {
-	report, err := buildGlobalReport(userID)
+	// nil, nil = all time, preserving exactly the report the Assistant saw
+	// before Phase 5 added optional date-range filtering to this function
+	// for the Reports page — the Assistant itself is out of this phase's
+	// scope and its context shouldn't narrow without being asked.
+	report, err := buildGlobalReport(userID, nil, nil)
 	if err != nil {
 		return nil, nil, nil, err
 	}

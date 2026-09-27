@@ -134,7 +134,14 @@ export const api = {
   getSummary: (token, companyId) => request(`/companies/${companyId}/transfers/summary`, { token }),
   getInsights: (token, companyId) => request(`/companies/${companyId}/insights`, { token }),
   getOverviewInsights: (token) => request('/insights/overview', { token }),
-  getReports: (token, companyId) => request(`/reports${companyId ? `?company_id=${companyId}` : ''}`, { token }),
+  getReports: (token, { companyId, since, until } = {}) => {
+    const params = new URLSearchParams()
+    if (companyId) params.set('company_id', companyId)
+    if (since) params.set('since', since)
+    if (until) params.set('until', until)
+    const qs = params.toString()
+    return request(`/reports${qs ? `?${qs}` : ''}`, { token })
+  },
   chat: (token, message, history) => request('/chat', { method: 'POST', token, body: { message, history } }),
   listConversations: (token) => request('/conversations', { token }),
   getConversation: (token, id) => request(`/conversations/${id}`, { token }),

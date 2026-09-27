@@ -4,6 +4,8 @@ import (
 	"database/sql"
 	"encoding/json"
 	"net/http"
+	"strconv"
+	"time"
 
 	"github.com/gin-gonic/gin"
 
@@ -12,6 +14,53 @@ import (
 	"lekha-api/utils"
 )
 
+// dateFilter turns optional since/until bounds into a SQL fragment and its
+// bind args. Both nil means "all time" (the endpoint's original, unfiltered
+// behaviour — a request with neither ?since nor ?until is byte-for-byte
+// backward compatible with before Phase 5).
+//
+// paramOffset is the number of placeholders already used before this
+// fragment (e.g. 1 when $1 is userID/companyID) — the fragment's own
+// placeholders start right after it. When the same fragment text is
+// embedded more than once in a single query (see the top-companies query
+// below), Postgres is fine referencing $2/$3 twice; just don't pass the
+// args slice more than once for that query.
+type dateFilter struct {
+	sql  string
+	args []interface{}
+}
+
+func newDateFilter(since, until *time.Time, paramOffset int) dateFilter {
+	frag := ""
+	var args []interface{}
+	n := paramOffset
+	if since != nil {
+		n++
+		frag += " AND t.transaction_date >= $" + strconv.Itoa(n)
+		args = append(args, *since)
+	}
+	if until != nil {
+		n++
+		frag += " AND t.transaction_date < $" + strconv.Itoa(n)
+		args = append(args, *until)
+	}
+	return dateFilter{sql: frag, args: args}
+}
+
+// parseReportTimeParam parses an RFC3339 query param into a *time.Time, or
+// returns nil (no error) for an empty string — the "not provided" case,
+// meaning "no bound on this side".
+func parseReportTimeParam(raw string) (*time.Time, error) {
+	if raw == "" {
+		return nil, nil
+	}
+	t, err := time.Parse(time.RFC3339, raw)
+	if err != nil {
+		return nil, err
+	}
+	return &t, nil
+}
+
 // buildGlobalReport computes report numbers across every company the user
 // belongs to — a "relevant" transfer is one where either side's account
 // belongs to ANY of the user's companies. "Incoming"/"outgoing" here are
@@ -19,7 +68,12 @@ import (
 // leaving the set of companies they control) — a transfer between two of
 // the user's own companies counts as both incoming and outgoing, which is
 // correct: it genuinely moved in on one side and out on the other.
-func buildGlobalReport(userID string) (models.ReportData, error) {
+//
+// since/until (both optional) restrict every number below to transfers
+// with transaction_date in [since, until) — nil on either side means "no
+// bound" on that side, so passing both nil reproduces the original,
+// unfiltered "all time" report exactly.
+func buildGlobalReport(userID string, since, until *time.Time) (models.ReportData, error) {
 	data := models.ReportData{
 		Scope:          "global",
 		CountByStatus:  map[string]int{},
@@ -28,7 +82,8 @@ func buildGlobalReport(userID string) (models.ReportData, error) {
 		AmountByType:   map[string]float64{},
 	}
 
-	const relevantCTE = `
+	df := newDateFilter(since, until, 1) // $1 is userID
+	relevantCTE := `
 		WITH my_companies AS (
 			SELECT co.id FROM company co
 			JOIN company_members cm ON cm.company_id = co.id
@@ -41,12 +96,14 @@ func buildGlobalReport(userID string) (models.ReportData, error) {
 			FROM transfers t
 			JOIN accounts fa ON fa.id = t.from_account_id
 			JOIN accounts ta ON ta.id = t.to_account_id
-			WHERE fa.company_id IN (SELECT id FROM my_companies)
-			   OR ta.company_id IN (SELECT id FROM my_companies)
+			WHERE (fa.company_id IN (SELECT id FROM my_companies)
+			   OR ta.company_id IN (SELECT id FROM my_companies))
+			` + df.sql + `
 		)`
+	args := append([]interface{}{userID}, df.args...)
 
 	row := config.DB.QueryRow(relevantCTE+`
-		SELECT COUNT(*), COALESCE(SUM(amount), 0) FROM relevant`, userID)
+		SELECT COUNT(*), COALESCE(SUM(amount), 0) FROM relevant`, args...)
 	if err := row.Scan(&data.TotalTransfers, &data.TotalAmount); err != nil {
 		return data, err
 	}
@@ -55,13 +112,13 @@ func buildGlobalReport(userID string) (models.ReportData, error) {
 		SELECT
 			COALESCE(SUM(amount) FILTER (WHERE to_company_id IN (SELECT id FROM my_companies)), 0),
 			COALESCE(SUM(amount) FILTER (WHERE from_company_id IN (SELECT id FROM my_companies)), 0)
-		FROM relevant`, userID)
+		FROM relevant`, args...)
 	if err := row.Scan(&data.IncomingTotal, &data.OutgoingTotal); err != nil {
 		return data, err
 	}
 
 	statusRows, err := config.DB.Query(relevantCTE+`
-		SELECT status, COUNT(*), COALESCE(SUM(amount), 0) FROM relevant GROUP BY status`, userID)
+		SELECT status, COUNT(*), COALESCE(SUM(amount), 0) FROM relevant GROUP BY status`, args...)
 	if err != nil {
 		return data, err
 	}
@@ -78,7 +135,7 @@ func buildGlobalReport(userID string) (models.ReportData, error) {
 	}
 
 	typeRows, err := config.DB.Query(relevantCTE+`
-		SELECT transfer_type, COUNT(*), COALESCE(SUM(amount), 0) FROM relevant GROUP BY transfer_type`, userID)
+		SELECT transfer_type, COUNT(*), COALESCE(SUM(amount), 0) FROM relevant GROUP BY transfer_type`, args...)
 	if err != nil {
 		return data, err
 	}
@@ -96,7 +153,7 @@ func buildGlobalReport(userID string) (models.ReportData, error) {
 
 	tsRows, err := config.DB.Query(relevantCTE+`
 		SELECT transaction_date::date, COUNT(*), COALESCE(SUM(amount), 0)
-		FROM relevant GROUP BY 1 ORDER BY 1`, userID)
+		FROM relevant GROUP BY 1 ORDER BY 1`, args...)
 	if err != nil {
 		return data, err
 	}
@@ -110,8 +167,13 @@ func buildGlobalReport(userID string) (models.ReportData, error) {
 	}
 
 	// Top companies: the user's OWN companies, ranked by their total
-	// transfer value (sent or received) — reuses the same "either side"
-	// rule as the overview insights panel.
+	// transfer value (sent or received) in the selected window — reuses
+	// the same "either side" rule as the overview insights panel. The
+	// date-filter fragment is embedded in both UNION branches, so its
+	// placeholders ($2/$3) are each referenced twice in this one query —
+	// args are still only passed once (Postgres reuses positional params).
+	topCoDF := newDateFilter(since, until, 1)
+	topCoArgs := append([]interface{}{userID}, topCoDF.args...)
 	topCoRows, err := config.DB.Query(`
 		WITH my_companies AS (
 			SELECT co.id, co.company_name FROM company co
@@ -121,16 +183,18 @@ func buildGlobalReport(userID string) (models.ReportData, error) {
 		pairs AS (
 			SELECT fa.company_id AS company_id, t.id AS transfer_id, t.amount AS amount
 			FROM transfers t JOIN accounts fa ON fa.id = t.from_account_id
+			WHERE 1=1 `+topCoDF.sql+`
 			UNION
 			SELECT ta.company_id AS company_id, t.id AS transfer_id, t.amount AS amount
 			FROM transfers t JOIN accounts ta ON ta.id = t.to_account_id
+			WHERE 1=1 `+topCoDF.sql+`
 		)
 		SELECT mc.id, mc.company_name, COUNT(p.transfer_id), COALESCE(SUM(p.amount), 0)
 		FROM my_companies mc
 		LEFT JOIN pairs p ON p.company_id = mc.id
 		GROUP BY mc.id, mc.company_name
 		ORDER BY COALESCE(SUM(p.amount), 0) DESC
-		LIMIT 5`, userID)
+		LIMIT 5`, topCoArgs...)
 	if err != nil {
 		return data, err
 	}
@@ -144,7 +208,7 @@ func buildGlobalReport(userID string) (models.ReportData, error) {
 	}
 
 	// Top accounts: every account touched by a relevant transfer (either
-	// side), ranked by total value it was involved in.
+	// side) in the window, ranked by total value it was involved in.
 	topAcctRows, err := config.DB.Query(relevantCTE+`,
 		account_activity AS (
 			SELECT from_account_id AS account_id, amount FROM relevant
@@ -157,7 +221,7 @@ func buildGlobalReport(userID string) (models.ReportData, error) {
 		JOIN company co ON co.id = a.company_id
 		GROUP BY a.id, a.account_type, co.company_name
 		ORDER BY COALESCE(SUM(aa.amount), 0) DESC
-		LIMIT 5`, userID)
+		LIMIT 5`, args...)
 	if err != nil {
 		return data, err
 	}
@@ -175,8 +239,9 @@ func buildGlobalReport(userID string) (models.ReportData, error) {
 
 // buildCompanyReport is the same shape of report, scoped to one company —
 // "incoming" is money received BY this company, "outgoing" is money sent
-// BY it. Caller must already have verified company membership.
-func buildCompanyReport(companyID, companyName string) (models.ReportData, error) {
+// BY it. Caller must already have verified company membership. since/until
+// behave exactly as in buildGlobalReport.
+func buildCompanyReport(companyID, companyName string, since, until *time.Time) (models.ReportData, error) {
 	data := models.ReportData{
 		Scope:          "company",
 		CompanyID:      &companyID,
@@ -187,7 +252,8 @@ func buildCompanyReport(companyID, companyName string) (models.ReportData, error
 		AmountByType:   map[string]float64{},
 	}
 
-	const relevantCTE = `
+	df := newDateFilter(since, until, 1) // $1 is companyID
+	relevantCTE := `
 		WITH relevant AS (
 			SELECT t.id, t.amount, t.status, t.transfer_type, t.transaction_date,
 			       t.from_account_id, t.to_account_id,
@@ -195,11 +261,13 @@ func buildCompanyReport(companyID, companyName string) (models.ReportData, error
 			FROM transfers t
 			JOIN accounts fa ON fa.id = t.from_account_id
 			JOIN accounts ta ON ta.id = t.to_account_id
-			WHERE fa.company_id = $1 OR ta.company_id = $1
+			WHERE (fa.company_id = $1 OR ta.company_id = $1)
+			` + df.sql + `
 		)`
+	args := append([]interface{}{companyID}, df.args...)
 
 	row := config.DB.QueryRow(relevantCTE+`
-		SELECT COUNT(*), COALESCE(SUM(amount), 0) FROM relevant`, companyID)
+		SELECT COUNT(*), COALESCE(SUM(amount), 0) FROM relevant`, args...)
 	if err := row.Scan(&data.TotalTransfers, &data.TotalAmount); err != nil {
 		return data, err
 	}
@@ -208,13 +276,13 @@ func buildCompanyReport(companyID, companyName string) (models.ReportData, error
 		SELECT
 			COALESCE(SUM(amount) FILTER (WHERE to_company_id = $1), 0),
 			COALESCE(SUM(amount) FILTER (WHERE from_company_id = $1), 0)
-		FROM relevant`, companyID)
+		FROM relevant`, args...)
 	if err := row.Scan(&data.IncomingTotal, &data.OutgoingTotal); err != nil {
 		return data, err
 	}
 
 	statusRows, err := config.DB.Query(relevantCTE+`
-		SELECT status, COUNT(*), COALESCE(SUM(amount), 0) FROM relevant GROUP BY status`, companyID)
+		SELECT status, COUNT(*), COALESCE(SUM(amount), 0) FROM relevant GROUP BY status`, args...)
 	if err != nil {
 		return data, err
 	}
@@ -231,7 +299,7 @@ func buildCompanyReport(companyID, companyName string) (models.ReportData, error
 	}
 
 	typeRows, err := config.DB.Query(relevantCTE+`
-		SELECT transfer_type, COUNT(*), COALESCE(SUM(amount), 0) FROM relevant GROUP BY transfer_type`, companyID)
+		SELECT transfer_type, COUNT(*), COALESCE(SUM(amount), 0) FROM relevant GROUP BY transfer_type`, args...)
 	if err != nil {
 		return data, err
 	}
@@ -249,7 +317,7 @@ func buildCompanyReport(companyID, companyName string) (models.ReportData, error
 
 	tsRows, err := config.DB.Query(relevantCTE+`
 		SELECT transaction_date::date, COUNT(*), COALESCE(SUM(amount), 0)
-		FROM relevant GROUP BY 1 ORDER BY 1`, companyID)
+		FROM relevant GROUP BY 1 ORDER BY 1`, args...)
 	if err != nil {
 		return data, err
 	}
@@ -274,7 +342,7 @@ func buildCompanyReport(companyID, companyName string) (models.ReportData, error
 		JOIN company co ON co.id = a.company_id
 		GROUP BY a.id, a.account_type, co.company_name
 		ORDER BY COALESCE(SUM(aa.amount), 0) DESC
-		LIMIT 5`, companyID)
+		LIMIT 5`, args...)
 	if err != nil {
 		return data, err
 	}
@@ -293,20 +361,44 @@ func buildCompanyReport(companyID, companyName string) (models.ReportData, error
 const reportsSystemPromptEN = `You are given a JSON object of already-computed, correct numeric statistics about bank transfer activity (either for one company, or across every company a user belongs to — check the "scope" field). All amounts are in Indian Rupees — always write them with the ₹ symbol (e.g. ₹16,900), never $ or USD. Write a short, plain-English narrative (4-6 sentences) for a business owner reading their reports page: summarize the overall trend, call out the busiest period or largest single-day activity from the time_series data if there's a clear pattern, note the balance between incoming and outgoing totals, mention which status or transfer type dominates, and flag anything that looks like an anomaly (e.g. an unusually large cancelled/reversed amount, or a company/account with disproportionately high activity). Do not invent, estimate, or recalculate any number — only describe the numbers given to you, in your own words. Do not mention JSON or that you were given data. Write only the narrative, no preamble.`
 const reportsSystemPromptHI = `आपको बैंक ट्रांसफर गतिविधि के बारे में पहले से गणना किए गए, सही संख्यात्मक आंकड़ों वाला एक JSON ऑब्जेक्ट दिया गया है (या तो एक कंपनी के लिए, या उपयोगकर्ता की सभी कंपनियों में — "scope" फ़ील्ड देखें)। सभी राशियां भारतीय रुपयों में हैं — हमेशा ₹ चिह्न के साथ लिखें, कभी $ या USD नहीं। एक व्यवसाय मालिक के लिए शुद्ध, सरल हिंदी में एक छोटा विवरण (4-6 वाक्य) लिखें: कुल रुझान बताएं, time_series डेटा में कोई स्पष्ट पैटर्न हो तो सबसे व्यस्त अवधि बताएं, आने वाली और जाने वाली राशि का संतुलन बताएं, कौन सी स्थिति या ट्रांसफर प्रकार सबसे अधिक है यह बताएं, और कोई असामान्य बात (जैसे असामान्य रूप से बड़ी रद्द/उलटी राशि) हो तो उसका उल्लेख करें। दिए गए आंकड़ों में से किसी की भी कल्पना, अनुमान या पुनर्गणना न करें। JSON या डेटा दिए जाने का ज़िक्र न करें। केवल विवरण लिखें, कोई प्रस्तावना नहीं। पूरा जवाब हिंदी (देवनागरी लिपि) में लिखें।`
 
-// GetReports handles GET /reports?company_id=<optional>
-// Omit company_id for the global (all your companies) report.
+// GetReports handles GET /reports?company_id=<optional>&since=<RFC3339 optional>&until=<RFC3339 optional>
+//
+// Omit company_id for the global (all your companies) report. Omit both
+// since/until for the original, unfiltered all-time report — this is
+// exactly the request shape the frontend used before Phase 5, so it keeps
+// working unchanged. since/until (added in Phase 5) scope every number in
+// the response to transactions in that window, so the Reports page's
+// date-range selector isn't decorative.
 func GetReports(c *gin.Context) {
 	userID := c.GetString("user_id")
 	lang := utils.LangFromContext(c)
 	companyID := c.Query("company_id")
 
+	since, err := parseReportTimeParam(c.Query("since"))
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": utils.Msg(c, "invalid_request_data")})
+		return
+	}
+	until, err := parseReportTimeParam(c.Query("until"))
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": utils.Msg(c, "invalid_request_data")})
+		return
+	}
+
+	rangeKey := "all"
+	if since != nil {
+		rangeKey = since.Format(time.RFC3339)
+	}
+	if until != nil {
+		rangeKey += "_" + until.Format(time.RFC3339)
+	}
+
 	var data models.ReportData
 	var cacheKey string
-	var err error
 
 	if companyID == "" {
-		data, err = buildGlobalReport(userID)
-		cacheKey = "report:global:" + userID + ":" + string(lang)
+		data, err = buildGlobalReport(userID, since, until)
+		cacheKey = "report:global:" + userID + ":" + string(lang) + ":" + rangeKey
 	} else {
 		if !utils.IsValidUUID(companyID) {
 			c.JSON(http.StatusBadRequest, gin.H{"error": utils.Msg(c, "invalid_company_id")})
@@ -331,8 +423,8 @@ func GetReports(c *gin.Context) {
 			utils.RespondDBError(c, nameErr)
 			return
 		}
-		data, err = buildCompanyReport(companyID, companyName)
-		cacheKey = "report:company:" + companyID + ":" + string(lang)
+		data, err = buildCompanyReport(companyID, companyName, since, until)
+		cacheKey = "report:company:" + companyID + ":" + string(lang) + ":" + rangeKey
 	}
 	if err != nil {
 		utils.RespondDBError(c, err)
