@@ -75,8 +75,8 @@ export default function TransferLedgerPage({ token, user, scope }) {
               <span></span>
             </div>
             {transfers.map((tr) => {
-              const fromLabel = tr.from_company_name ? `${tr.from_company_name} · ${tAccountType(tr.from_account_type)}` : tr.from_account_id.slice(0, 6)
-              const toLabel = tr.to_company_name ? `${tr.to_company_name} · ${tAccountType(tr.to_account_type)}` : tr.to_account_id.slice(0, 6)
+              const fromLabel = (tr.from_company_name ? `${tr.from_company_name} · ${tAccountType(tr.from_account_type)}` : tr.from_account_id.slice(0, 6)) + (tr.from_account_deleted ? ` (${t('deleted_tag')})` : '')
+              const toLabel = (tr.to_company_name ? `${tr.to_company_name} · ${tAccountType(tr.to_account_type)}` : tr.to_account_id.slice(0, 6)) + (tr.to_account_deleted ? ` (${t('deleted_tag')})` : '')
               return (
                 <div key={tr.id} className="ledger-table-row clickable" onClick={() => setDetailTransferId(tr.id)}>
                   <span className="mono dim">{new Date(tr.transaction_date).toLocaleDateString(dateLocale, { month: 'short', day: 'numeric' })}</span>

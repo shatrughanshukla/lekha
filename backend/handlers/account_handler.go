@@ -108,7 +108,7 @@ func GetAccounts(c *gin.Context) {
 			       a.is_active, a.created_at, a.updated_at, a.created_by, a.updated_by
 			FROM accounts a
 			JOIN company co ON co.id = a.company_id
-			WHERE a.company_id = $1 ORDER BY a.created_at DESC`, companyID)
+			WHERE a.company_id = $1 AND a.deleted_at IS NULL ORDER BY a.created_at DESC`, companyID)
 		if err != nil {
 			utils.RespondDBError(c, err)
 			return
@@ -125,7 +125,7 @@ func GetAccounts(c *gin.Context) {
 		FROM accounts a
 		JOIN company co ON co.id = a.company_id
 		JOIN company_members cm ON cm.company_id = a.company_id
-		WHERE cm.user_id = $1
+		WHERE cm.user_id = $1 AND a.deleted_at IS NULL AND co.deleted_at IS NULL
 		ORDER BY co.company_name, a.created_at DESC`, userID)
 	if err != nil {
 		utils.RespondDBError(c, err)
@@ -189,7 +189,7 @@ func GetAccountByID(c *gin.Context) {
 		       a.is_active, a.created_at, a.updated_at, a.created_by, a.updated_by
 		FROM accounts a
 		JOIN company co ON co.id = a.company_id
-		WHERE a.id = $1`, id).
+		WHERE a.id = $1 AND a.deleted_at IS NULL`, id).
 		Scan(&acc.ID, &acc.CompanyID, &acc.CompanyName, &acc.AccountType, &acc.CurrentBalance,
 			&acc.IsActive, &acc.CreatedAt, &acc.UpdatedAt, &acc.CreatedBy, &acc.UpdatedBy)
 
@@ -266,7 +266,7 @@ func UpdateAccount(c *gin.Context) {
 		SET account_type = COALESCE($1, account_type),
 		    is_active = COALESCE($2, is_active),
 		    updated_by = $3
-		WHERE id = $4
+		WHERE id = $4 AND deleted_at IS NULL
 		RETURNING id, company_id, account_type, current_balance, is_active, created_at, updated_at, created_by, updated_by`,
 		input.AccountType, input.IsActive, input.UpdatedBy, id,
 	).Scan(&acc.ID, &acc.CompanyID, &acc.AccountType, &acc.CurrentBalance, &acc.IsActive,
@@ -313,8 +313,34 @@ func DeleteAccount(c *gin.Context) {
 		c.JSON(http.StatusNotFound, gin.H{"error": utils.Msg(c, "account_not_found")})
 		return
 	}
+	isAdmin, err := utils.IsCompanyAdmin(companyID, userID)
+	if err != nil {
+		utils.RespondDBError(c, err)
+		return
+	}
+	if !isAdmin {
+		c.JSON(http.StatusForbidden, gin.H{"error": utils.Msg(c, "only_admin_delete_account")})
+		return
+	}
 
-	result, err := config.DB.Exec(`DELETE FROM accounts WHERE id = $1`, id)
+	// Anything still awaiting the other side's decision would be stranded.
+	open, err := utils.AccountHasOpenTransfers(id)
+	if err != nil {
+		utils.RespondDBError(c, err)
+		return
+	}
+	if open {
+		c.JSON(http.StatusConflict, gin.H{"error": utils.Msg(c, "account_has_open_transfers")})
+		return
+	}
+
+	// SOFT delete. A hard DELETE can't work (transfers reference the account
+	// — that was the "referenced record does not exist" error) and shouldn't
+	// (it would erase the other company's history). The row stays, flagged,
+	// and is_active=false makes every transfer path refuse it from now on.
+	result, err := config.DB.Exec(`
+		UPDATE accounts SET deleted_at = NOW(), is_active = false, updated_by = $2
+		WHERE id = $1 AND deleted_at IS NULL`, id, userID)
 	if err != nil {
 		utils.RespondDBError(c, err)
 		return

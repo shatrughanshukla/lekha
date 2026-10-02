@@ -1,6 +1,10 @@
 package utils
 
-import "lekha-api/config"
+import (
+	"lekha-api/config"
+
+	"golang.org/x/crypto/bcrypt"
+)
 
 // IsCompanyMember reports whether userID is a member of companyID — the
 // central check that every company-scoped endpoint runs before returning
@@ -10,7 +14,9 @@ import "lekha-api/config"
 func IsCompanyMember(companyID, userID string) (bool, error) {
 	var exists bool
 	err := config.DB.QueryRow(
-		`SELECT EXISTS(SELECT 1 FROM company_members WHERE company_id = $1 AND user_id = $2)`,
+		`SELECT EXISTS(
+			SELECT 1 FROM company_members cm JOIN company co ON co.id = cm.company_id
+			WHERE cm.company_id = $1 AND cm.user_id = $2 AND co.deleted_at IS NULL)`,
 		companyID, userID,
 	).Scan(&exists)
 	return exists, err
@@ -22,7 +28,9 @@ func IsCompanyMember(companyID, userID string) (bool, error) {
 func IsCompanyAdmin(companyID, userID string) (bool, error) {
 	var exists bool
 	err := config.DB.QueryRow(
-		`SELECT EXISTS(SELECT 1 FROM company_members WHERE company_id = $1 AND user_id = $2 AND is_admin = TRUE)`,
+		`SELECT EXISTS(
+			SELECT 1 FROM company_members cm JOIN company co ON co.id = cm.company_id
+			WHERE cm.company_id = $1 AND cm.user_id = $2 AND cm.is_admin = TRUE AND co.deleted_at IS NULL)`,
 		companyID, userID,
 	).Scan(&exists)
 	return exists, err
@@ -46,7 +54,7 @@ func AdminCount(companyID string) (int, error) {
 // membership check above before doing anything with that account.
 func CompanyIDForAccount(accountID string) (string, error) {
 	var companyID string
-	err := config.DB.QueryRow(`SELECT company_id FROM accounts WHERE id = $1`, accountID).Scan(&companyID)
+	err := config.DB.QueryRow(`SELECT company_id FROM accounts WHERE id = $1 AND deleted_at IS NULL`, accountID).Scan(&companyID)
 	return companyID, err
 }
 
@@ -73,4 +81,44 @@ func PartyCompanyIDsForTransfer(transferID string) (fromCompanyID, toCompanyID s
 		WHERE t.id = $1`, transferID,
 	).Scan(&fromCompanyID, &toCompanyID)
 	return fromCompanyID, toCompanyID, err
+}
+
+// VerifyUserPassword reports whether password matches userID's current
+// password. Used to re-confirm identity before destructive or sensitive
+// company changes (rename, delete) — a stolen/left-open session alone is
+// not enough to do those.
+func VerifyUserPassword(userID, password string) (bool, error) {
+	var hash string
+	if err := config.DB.QueryRow(`SELECT password_hash FROM users WHERE id = $1`, userID).Scan(&hash); err != nil {
+		return false, err
+	}
+	return bcrypt.CompareHashAndPassword([]byte(hash), []byte(password)) == nil, nil
+}
+
+// AccountHasOpenTransfers reports whether any transfer touching the account
+// is still waiting on a decision (a PENDING transfer, or a reversal
+// proposal on a completed one). Deleting the account then would strand the
+// other side's approval, so it is refused until those are resolved.
+func AccountHasOpenTransfers(accountID string) (bool, error) {
+	var exists bool
+	err := config.DB.QueryRow(`
+		SELECT EXISTS(
+			SELECT 1 FROM transfers
+			WHERE (from_account_id = $1 OR to_account_id = $1)
+			  AND (status = 'PENDING' OR pending_status IS NOT NULL))`, accountID).Scan(&exists)
+	return exists, err
+}
+
+// CompanyHasOpenTransfers is AccountHasOpenTransfers for every account the
+// company owns.
+func CompanyHasOpenTransfers(companyID string) (bool, error) {
+	var exists bool
+	err := config.DB.QueryRow(`
+		SELECT EXISTS(
+			SELECT 1 FROM transfers t
+			JOIN accounts fa ON fa.id = t.from_account_id
+			JOIN accounts ta ON ta.id = t.to_account_id
+			WHERE (fa.company_id = $1 OR ta.company_id = $1)
+			  AND (t.status = 'PENDING' OR t.pending_status IS NOT NULL))`, companyID).Scan(&exists)
+	return exists, err
 }

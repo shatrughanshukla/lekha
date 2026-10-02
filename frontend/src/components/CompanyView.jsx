@@ -489,16 +489,18 @@ export default function CompanyView({ token, user, company, onBack }) {
               // short ID if the account belongs to someone else entirely.
               const fromLocal = accountsById[t2.from_account_id]
               const toLocal = accountsById[t2.to_account_id]
-              const fromLabel = t2.from_company_name
+              const fromBase = t2.from_company_name
                 ? `${t2.from_company_name} · ${tAccountType(t2.from_account_type)}`
                 : fromLocal
                 ? `${fromLocal.company_name} · ${tAccountType(fromLocal.account_type)}`
                 : t2.from_account_id.slice(0, 6)
-              const toLabel = t2.to_company_name
+              const toBase = t2.to_company_name
                 ? `${t2.to_company_name} · ${tAccountType(t2.to_account_type)}`
                 : toLocal
                 ? `${toLocal.company_name} · ${tAccountType(toLocal.account_type)}`
                 : t2.to_account_id.slice(0, 6)
+              const fromLabel = fromBase + (t2.from_account_deleted ? ` (${t('deleted_tag')})` : '')
+              const toLabel = toBase + (t2.to_account_deleted ? ` (${t('deleted_tag')})` : '')
 
               return (
                 <div key={t2.id} className="ledger-table-row clickable" onClick={() => setDetailTransferId(t2.id)}>

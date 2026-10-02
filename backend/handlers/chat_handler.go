@@ -50,7 +50,7 @@ func buildChatContext(userID string) (map[string]interface{}, []chatAccountConte
 		FROM accounts a
 		JOIN company_members cm ON cm.company_id = a.company_id
 		JOIN company co ON co.id = a.company_id
-		WHERE cm.user_id = $1 AND a.is_active = true
+		WHERE cm.user_id = $1 AND a.is_active = true AND a.deleted_at IS NULL AND co.deleted_at IS NULL
 		ORDER BY co.company_name, a.account_type`, userID)
 	if err != nil {
 		return nil, nil, nil, err
@@ -69,7 +69,7 @@ func buildChatContext(userID string) (map[string]interface{}, []chatAccountConte
 		WITH my_companies AS (
 			SELECT co.id FROM company co
 			JOIN company_members cm ON cm.company_id = co.id
-			WHERE cm.user_id = $1
+			WHERE cm.user_id = $1 AND co.deleted_at IS NULL
 		)
 		SELECT DISTINCT t.id, t.amount, t.status, t.pending_status, fc.company_name, tc.company_name
 		FROM transfers t

@@ -249,7 +249,7 @@ export default function ChatPage({ token, user }) {
                       {c.title}
                     </button>
                     <DropdownMenu
-                      trigger={<button className="icon-menu-btn assistant-history-item-menu" aria-label={t('company_menu_label')} onClick={(e) => e.stopPropagation()}>⋯</button>}
+                      trigger={<button className="icon-menu-btn assistant-history-item-menu" aria-label={t('company_menu_label')}>⋯</button>}
                       items={[{ label: t('assistant_delete_conversation'), icon: <IconTrash />, danger: true, onSelect: () => deleteConversation(c.id) }]}
                     />
                   </motion.div>

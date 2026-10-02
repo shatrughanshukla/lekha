@@ -77,14 +77,18 @@ export default function TransferDetail({ token, user, company, transferId, onClo
             <span className="detail-label">{tr('from_label')}</span>
             <span className="detail-value">
               {t.from_company_name} — {tAccountType(t.from_account_type)}
+              {t.from_account_deleted && <span className="deleted-tag">{tr('deleted_tag')}</span>}
               <div className="detail-sub mono">{t.from_account_id}</div>
+              {t.from_account_deleted && <div className="detail-sub">{tr('deleted_account_note')}</div>}
             </span>
           </div>
           <div className="detail-row">
             <span className="detail-label">{tr('to_label')}</span>
             <span className="detail-value">
               {t.to_company_name} — {tAccountType(t.to_account_type)}
+              {t.to_account_deleted && <span className="deleted-tag">{tr('deleted_tag')}</span>}
               <div className="detail-sub mono">{t.to_account_id}</div>
+              {t.to_account_deleted && <div className="detail-sub">{tr('deleted_account_note')}</div>}
             </span>
           </div>
           <div className="detail-row">

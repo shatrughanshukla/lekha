@@ -87,7 +87,7 @@ func buildGlobalReport(userID string, since, until *time.Time) (models.ReportDat
 		WITH my_companies AS (
 			SELECT co.id FROM company co
 			JOIN company_members cm ON cm.company_id = co.id
-			WHERE cm.user_id = $1
+			WHERE cm.user_id = $1 AND co.deleted_at IS NULL
 		),
 		relevant AS (
 			SELECT DISTINCT t.id, t.amount, t.status, t.transfer_type, t.transaction_date,
@@ -178,7 +178,7 @@ func buildGlobalReport(userID string, since, until *time.Time) (models.ReportDat
 		WITH my_companies AS (
 			SELECT co.id, co.company_name FROM company co
 			JOIN company_members cm ON cm.company_id = co.id
-			WHERE cm.user_id = $1
+			WHERE cm.user_id = $1 AND co.deleted_at IS NULL
 		),
 		pairs AS (
 			SELECT fa.company_id AS company_id, t.id AS transfer_id, t.amount AS amount

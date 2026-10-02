@@ -134,7 +134,7 @@ func buildOverviewSummary(userID string) (models.OverviewSummary, error) {
 			SELECT co.id, co.company_name, co.created_at
 			FROM company co
 			JOIN company_members cm ON cm.company_id = co.id
-			WHERE cm.user_id = $1
+			WHERE cm.user_id = $1 AND co.deleted_at IS NULL
 		),
 		transfer_company_pairs AS (
 			SELECT fa.company_id AS company_id, t.id AS transfer_id, t.amount AS amount

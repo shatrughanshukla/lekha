@@ -31,6 +31,9 @@ export const IconBank = (p) => (
 export const IconCash = (p) => (
   <svg {...iconProps} {...p}><rect x="2.5" y="6" width="19" height="12" rx="1.5" /><circle cx="12" cy="12" r="2.8" /><path d="M6 9h.01M18 15h.01" /></svg>
 )
+export const IconPencil = (p) => (
+  <svg {...iconProps} {...p}><path d="M4 20h4L19 9a2.1 2.1 0 00-3-3L5 17v3z" /><path d="M14.5 7.5l3 3" /></svg>
+)
 export const IconTrash = (p) => (
   <svg {...iconProps} {...p}><path d="M4 7h16" /><path d="M9 7V4.5A1.5 1.5 0 0110.5 3h3A1.5 1.5 0 0115 4.5V7" /><path d="M6 7l1 13a1.5 1.5 0 001.5 1.4h7a1.5 1.5 0 001.5-1.4L18 7" /><path d="M10 11v6M14 11v6" /></svg>
 )

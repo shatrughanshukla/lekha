@@ -36,6 +36,11 @@ type Transfer struct {
 	ToCompanyName   string `json:"to_company_name,omitempty"`
 	FromAccountType string `json:"from_account_type,omitempty"`
 	ToAccountType   string `json:"to_account_type,omitempty"`
+	// True when the account (or its whole company) has since been deleted.
+	// The transfer itself is kept so the other side's history stays intact.
+	FromAccountDeleted bool `json:"from_account_deleted"`
+	ToAccountDeleted   bool `json:"to_account_deleted"`
+
 	CreatedByName   string `json:"created_by_name,omitempty"`
 	UpdatedByName   string `json:"updated_by_name,omitempty"`
 }

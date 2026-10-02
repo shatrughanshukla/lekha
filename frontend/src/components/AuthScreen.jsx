@@ -1,10 +1,13 @@
 import { useState } from 'react'
+import { Link, useSearchParams } from 'react-router-dom'
 import { api } from '../api.js'
-import { ErrorNote, IconLekhaMark } from './Shared.jsx'
+import { ErrorNote, IconLekhaMark, IconSun, IconMoon } from './Shared.jsx'
 import { useT } from '../i18n.jsx'
 
-export default function AuthScreen({ onAuthed }) {
-  const [mode, setMode] = useState('signin') // 'signin' | 'signup' | 'forgot'
+export default function AuthScreen({ onAuthed, theme, setTheme }) {
+  // The landing page's "Get started" opens this screen with ?mode=signup.
+  const [searchParams] = useSearchParams()
+  const [mode, setMode] = useState(searchParams.get('mode') === 'signup' ? 'signup' : 'signin') // 'signin' | 'signup' | 'forgot'
   const [name, setName] = useState('')
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
@@ -57,19 +60,32 @@ export default function AuthScreen({ onAuthed }) {
 
   return (
     <div className="auth-page">
-      <button
-        type="button"
-        className="lang-toggle auth-lang-toggle"
-        onClick={() => setLang(lang === 'en' ? 'hi' : 'en')}
-        title={t('lang_switch_title')}
-      >
-        {lang === 'en' ? 'हिं' : 'EN'}
-      </button>
+      <div className="auth-top-controls">
+        <button
+          type="button"
+          className="lang-toggle"
+          onClick={() => setTheme(theme === 'dark' ? 'light' : 'dark')}
+          title={theme === 'dark' ? t('theme_to_light') : t('theme_to_dark')}
+          aria-label={theme === 'dark' ? t('theme_to_light') : t('theme_to_dark')}
+        >
+          {theme === 'dark' ? <IconSun width={16} height={16} /> : <IconMoon width={16} height={16} />}
+        </button>
+        <button
+          type="button"
+          className="lang-toggle"
+          onClick={() => setLang(lang === 'en' ? 'hi' : 'en')}
+          title={t('lang_switch_title')}
+        >
+          {lang === 'en' ? 'हिं' : 'EN'}
+        </button>
+      </div>
       <div className="auth-hero">
         <div className="ruled-lines" aria-hidden="true" />
         <div className="margin-rule" aria-hidden="true" />
         <div className="hero-content">
-          <div className="wordmark hero-wordmark"><IconLekhaMark width={64} height={64} />Lekha</div>
+          <Link to="/" className="auth-home-link" aria-label={t('landing_back_home')}>
+            <div className="wordmark hero-wordmark"><IconLekhaMark width={64} height={64} />Lekha</div>
+          </Link>
           <p className="hero-tagline">{t('tagline')}</p>
           <ul className="hero-principles">
             {PRINCIPLES.map((p) => (

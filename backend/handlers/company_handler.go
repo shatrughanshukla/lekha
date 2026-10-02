@@ -3,6 +3,8 @@ package handlers
 import (
 	"database/sql"
 	"net/http"
+	"strings"
+	"time"
 
 	"github.com/gin-gonic/gin"
 
@@ -10,6 +12,34 @@ import (
 	"lekha-api/models"
 	"lekha-api/utils"
 )
+
+// Rename/delete require the admin's password again; this caps how fast a
+// stolen session could guess it. Counts every password-confirmed attempt.
+var companyPasswordLimiter = utils.NewRateLimiter(10, 15*time.Minute)
+
+// confirmPassword is the shared "type your password to continue" gate for
+// rename/delete. It writes the error response itself and returns false when
+// the action must not proceed.
+func confirmPassword(c *gin.Context, userID, password string) bool {
+	if password == "" {
+		c.JSON(http.StatusBadRequest, gin.H{"error": utils.Msg(c, "password_required")})
+		return false
+	}
+	if !companyPasswordLimiter.Allow(userID) {
+		c.JSON(http.StatusTooManyRequests, gin.H{"error": utils.Msg(c, "too_many_password_attempts")})
+		return false
+	}
+	ok, err := utils.VerifyUserPassword(userID, password)
+	if err != nil {
+		utils.RespondDBError(c, err)
+		return false
+	}
+	if !ok {
+		c.JSON(http.StatusForbidden, gin.H{"error": utils.Msg(c, "incorrect_password")})
+		return false
+	}
+	return true
+}
 
 // CreateCompany handles POST /companies
 // Creates the company and, in the same transaction, makes its creator the
@@ -64,10 +94,10 @@ func GetCompanies(c *gin.Context) {
 	userID := c.GetString("user_id")
 
 	rows, err := config.DB.Query(`
-		SELECT co.id, co.company_name, co.created_at, co.updated_at, co.created_by, co.updated_by
+		SELECT co.id, co.company_name, co.created_at, co.updated_at, co.created_by, co.updated_by, cm.is_admin
 		FROM company co
 		JOIN company_members cm ON cm.company_id = co.id
-		WHERE cm.user_id = $1
+		WHERE cm.user_id = $1 AND co.deleted_at IS NULL
 		ORDER BY co.created_at DESC`, userID)
 	if err != nil {
 		utils.RespondDBError(c, err)
@@ -78,7 +108,7 @@ func GetCompanies(c *gin.Context) {
 	companies := []models.Company{}
 	for rows.Next() {
 		var comp models.Company
-		if err := rows.Scan(&comp.ID, &comp.CompanyName, &comp.CreatedAt, &comp.UpdatedAt, &comp.CreatedBy, &comp.UpdatedBy); err != nil {
+		if err := rows.Scan(&comp.ID, &comp.CompanyName, &comp.CreatedAt, &comp.UpdatedAt, &comp.CreatedBy, &comp.UpdatedBy, &comp.IsAdmin); err != nil {
 			utils.RespondDBError(c, err)
 			return
 		}
@@ -129,6 +159,7 @@ func GetCompanyByID(c *gin.Context) {
 }
 
 // UpdateCompany handles PUT /companies/:id
+// Admin-only, and the admin must re-enter their password.
 func UpdateCompany(c *gin.Context) {
 	id := c.Param("id")
 	if !utils.IsValidUUID(id) {
@@ -146,10 +177,27 @@ func UpdateCompany(c *gin.Context) {
 		c.JSON(http.StatusNotFound, gin.H{"error": utils.Msg(c, "company_not_found")})
 		return
 	}
+	isAdmin, err := utils.IsCompanyAdmin(id, userID)
+	if err != nil {
+		utils.RespondDBError(c, err)
+		return
+	}
+	if !isAdmin {
+		c.JSON(http.StatusForbidden, gin.H{"error": utils.Msg(c, "only_admin_edit_company")})
+		return
+	}
 
 	var input models.UpdateCompanyInput
 	if err := c.ShouldBindJSON(&input); err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": utils.Msg(c, "invalid_request_data")})
+		return
+	}
+	name := strings.TrimSpace(input.CompanyName)
+	if name == "" {
+		c.JSON(http.StatusBadRequest, gin.H{"error": utils.Msg(c, "invalid_request_data")})
+		return
+	}
+	if !confirmPassword(c, userID, input.Password) {
 		return
 	}
 
@@ -157,9 +205,9 @@ func UpdateCompany(c *gin.Context) {
 	err = config.DB.QueryRow(`
 		UPDATE company
 		SET company_name = $1, updated_by = $2
-		WHERE id = $3
+		WHERE id = $3 AND deleted_at IS NULL
 		RETURNING id, company_name, created_at, updated_at, created_by, updated_by`,
-		input.CompanyName, input.UpdatedBy, id,
+		name, userID, id,
 	).Scan(&comp.ID, &comp.CompanyName, &comp.CreatedAt, &comp.UpdatedAt, &comp.CreatedBy, &comp.UpdatedBy)
 
 	if err == sql.ErrNoRows {
@@ -171,10 +219,18 @@ func UpdateCompany(c *gin.Context) {
 		return
 	}
 
+	comp.IsAdmin = true
 	c.JSON(http.StatusOK, comp)
 }
 
-// DeleteCompany handles DELETE /companies/:id
+// DeleteCompany handles DELETE /companies/:id   (body: {"password": "..."})
+//
+// Admin-only, password-confirmed, and a SOFT delete: the company and all its
+// accounts are marked deleted (see migrations/2026_10_soft_delete.sql). They
+// vanish from the owner's lists, balances and reports, and its members lose
+// access, but every transfer row stays so the OTHER company still sees its
+// own history — with this side shown as deleted. Refused while any transfer
+// involving the company is still awaiting a decision.
 func DeleteCompany(c *gin.Context) {
 	id := c.Param("id")
 	if !utils.IsValidUUID(id) {
@@ -192,19 +248,58 @@ func DeleteCompany(c *gin.Context) {
 		c.JSON(http.StatusNotFound, gin.H{"error": utils.Msg(c, "company_not_found")})
 		return
 	}
-
-	result, err := config.DB.Exec(`DELETE FROM company WHERE id = $1`, id)
+	isAdmin, err := utils.IsCompanyAdmin(id, userID)
 	if err != nil {
-		// Most commonly hit here: the company still has accounts (or
-		// transfers) referencing it — a foreign-key violation, now
-		// returned as a clean 400 instead of a raw 500.
 		utils.RespondDBError(c, err)
 		return
 	}
+	if !isAdmin {
+		c.JSON(http.StatusForbidden, gin.H{"error": utils.Msg(c, "only_admin_delete_company")})
+		return
+	}
 
-	rowsAffected, _ := result.RowsAffected()
-	if rowsAffected == 0 {
+	var input models.DeleteCompanyInput
+	_ = c.ShouldBindJSON(&input) // a missing/invalid body just means "no password" → rejected below
+	if !confirmPassword(c, userID, input.Password) {
+		return
+	}
+
+	open, err := utils.CompanyHasOpenTransfers(id)
+	if err != nil {
+		utils.RespondDBError(c, err)
+		return
+	}
+	if open {
+		c.JSON(http.StatusConflict, gin.H{"error": utils.Msg(c, "company_has_open_transfers")})
+		return
+	}
+
+	tx, err := config.DB.Begin()
+	if err != nil {
+		utils.RespondDBError(c, err)
+		return
+	}
+	defer tx.Rollback()
+
+	if _, err := tx.Exec(`
+		UPDATE accounts SET deleted_at = NOW(), is_active = false, updated_by = $2
+		WHERE company_id = $1 AND deleted_at IS NULL`, id, userID); err != nil {
+		utils.RespondDBError(c, err)
+		return
+	}
+	result, err := tx.Exec(`
+		UPDATE company SET deleted_at = NOW(), updated_by = $2
+		WHERE id = $1 AND deleted_at IS NULL`, id, userID)
+	if err != nil {
+		utils.RespondDBError(c, err)
+		return
+	}
+	if n, _ := result.RowsAffected(); n == 0 {
 		c.JSON(http.StatusNotFound, gin.H{"error": utils.Msg(c, "company_not_found")})
+		return
+	}
+	if err := tx.Commit(); err != nil {
+		utils.RespondDBError(c, err)
 		return
 	}
 

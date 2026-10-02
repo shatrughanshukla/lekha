@@ -62,7 +62,11 @@ export const api = {
   listCompanies: (token) => request('/companies', { token }),
   createCompany: (token, companyName, userId) =>
     request('/companies', { method: 'POST', token, body: { company_name: companyName, created_by: userId } }),
-  deleteCompany: (token, id) => request(`/companies/${id}`, { method: 'DELETE', token }),
+  // Rename and delete are admin-only and re-confirm the admin's password.
+  updateCompany: (token, id, companyName, password) =>
+    request(`/companies/${id}`, { method: 'PUT', token, body: { company_name: companyName, password } }),
+  deleteCompany: (token, id, password) =>
+    request(`/companies/${id}`, { method: 'DELETE', token, body: { password } }),
 
   listAccounts: (token, companyId) => request(`/accounts?company_id=${companyId}`, { token }),
   updateAccount: (token, id, { isActive, userId }) =>

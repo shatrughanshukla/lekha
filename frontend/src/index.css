@@ -1101,11 +1101,13 @@ button, input, select { font-family: inherit; font-size: 1rem; }
   border-color: var(--violet-2);
   box-shadow: none;
 }
-.auth-lang-toggle {
+.auth-top-controls {
   position: absolute;
   top: 20px;
   right: 24px;
   z-index: 5;
+  display: flex;
+  gap: 8px;
 }
 
 .page { max-width: 980px; margin: 0 auto; padding: var(--space-12) var(--space-6) 90px; }
@@ -3208,3 +3210,30 @@ button.attention-row:hover .attention-row-arrow { color: var(--color-primary); t
 .reports-io-list { display: flex; flex-direction: column; gap: var(--space-4); flex: 1; justify-content: center; }
 .reports-io-row-top { display: flex; align-items: baseline; justify-content: space-between; margin-bottom: 6px; font-size: var(--text-sm); color: var(--text); }
 .reports-io-row-top .mono { color: var(--text-dim); }
+
+
+/* ---- Company rename/delete dialog ---- */
+.company-action-form { display: grid; gap: var(--space-4); }
+.company-action-warning { margin: 0; font-size: var(--text-sm); line-height: var(--leading-normal); color: var(--text-body); }
+.company-action-buttons { display: flex; justify-content: flex-end; gap: var(--space-2); margin-top: var(--space-1); }
+
+/* A transfer's account that has since been deleted. */
+.deleted-tag {
+  display: inline-block;
+  margin-left: var(--space-2);
+  padding: 1px 8px;
+  border: 1px solid var(--color-danger);
+  border-radius: var(--radius-full);
+  font-size: var(--text-xs);
+  font-weight: var(--weight-semibold);
+  color: var(--color-danger);
+  vertical-align: middle;
+}
+
+/* The row menus only appear on hover; touch screens have no hover, so they'd
+   be unreachable. */
+@media (hover: none) {
+  .icon-menu-btn,
+  .company-row-menu,
+  .assistant-history-item-menu { opacity: 1; }
+}

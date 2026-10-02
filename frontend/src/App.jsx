@@ -1,13 +1,21 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, lazy, Suspense } from 'react'
 import { Routes, Route, Navigate, useNavigate } from 'react-router-dom'
 import AuthScreen from './components/AuthScreen.jsx'
-import AppShell from './components/AppShell.jsx'
-import Dashboard from './components/Dashboard.jsx'
-import CompanyRoute from './components/CompanyRoute.jsx'
-import AccountsPage from './components/AccountsPage.jsx'
-import TransferLedgerPage from './components/TransferLedgerPage.jsx'
-import ReportsPage from './components/ReportsPage.jsx'
-import ChatPage from './components/ChatPage.jsx'
+import LandingPage from './components/landing/LandingPage.jsx'
+// The authenticated app is code-split: a visitor on the public landing page
+// (or auth screen) shouldn't download the dashboard, charts library and
+// every page before they've even signed in.
+const AppShell = lazy(() => import('./components/AppShell.jsx'))
+const Dashboard = lazy(() => import('./components/Dashboard.jsx'))
+const CompanyRoute = lazy(() => import('./components/CompanyRoute.jsx'))
+const AccountsPage = lazy(() => import('./components/AccountsPage.jsx'))
+const TransferLedgerPage = lazy(() => import('./components/TransferLedgerPage.jsx'))
+const ReportsPage = lazy(() => import('./components/ReportsPage.jsx'))
+const ChatPage = lazy(() => import('./components/ChatPage.jsx'))
+
+// Suspense boundary per route element (inside AppShell's outlet), so the
+// shell stays mounted while a page chunk loads for the first time.
+const Lazy = ({ children }) => <Suspense fallback={null}>{children}</Suspense>
 import ResetPasswordScreen from './components/ResetPasswordScreen.jsx'
 import { useT } from './i18n.jsx'
 import { api } from './api.js'
@@ -175,17 +183,21 @@ export default function App() {
     <Routes>
       <Route
         path="/"
-        element={token && user ? <Navigate to="/app" replace /> : <AuthScreen onAuthed={handleAuthed} />}
+        element={token && user ? <Navigate to="/app" replace /> : <LandingPage theme={theme} setTheme={setTheme} />}
+      />
+      <Route
+        path="/auth"
+        element={token && user ? <Navigate to="/app" replace /> : <AuthScreen onAuthed={handleAuthed} theme={theme} setTheme={setTheme} />}
       />
 
-      <Route path="/app" element={<AppShell {...shellProps} />}>
-        <Route index element={<DashboardRoute token={token} user={user} />} />
-        <Route path="accounts" element={<AccountsPage token={token} user={user} />} />
-        <Route path="transfers" element={<TransferLedgerPage token={token} user={user} scope="mine" />} />
-        <Route path="transactions" element={<TransferLedgerPage token={token} user={user} scope="all" />} />
-        <Route path="assistant" element={<ChatPage token={token} user={user} />} />
-        <Route path="reports" element={<ReportsPage token={token} user={user} />} />
-        <Route path="companies/:id" element={<CompanyRoute token={token} user={user} />} />
+      <Route path="/app" element={<Lazy><AppShell {...shellProps} /></Lazy>}>
+        <Route index element={<Lazy><DashboardRoute token={token} user={user} /></Lazy>} />
+        <Route path="accounts" element={<Lazy><AccountsPage token={token} user={user} /></Lazy>} />
+        <Route path="transfers" element={<Lazy><TransferLedgerPage token={token} user={user} scope="mine" /></Lazy>} />
+        <Route path="transactions" element={<Lazy><TransferLedgerPage token={token} user={user} scope="all" /></Lazy>} />
+        <Route path="assistant" element={<Lazy><ChatPage token={token} user={user} /></Lazy>} />
+        <Route path="reports" element={<Lazy><ReportsPage token={token} user={user} /></Lazy>} />
+        <Route path="companies/:id" element={<Lazy><CompanyRoute token={token} user={user} /></Lazy>} />
       </Route>
 
       <Route path="*" element={<Navigate to={token && user ? '/app' : '/'} replace />} />

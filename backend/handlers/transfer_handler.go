@@ -228,7 +228,8 @@ const transferListSelect = `
 	SELECT t.id, t.company_id, t.transfer_type, t.transaction_date, t.from_account_id, t.to_account_id,
 	       t.amount, t.status, t.transfer_notes, t.created_by_user, t.updated_by_user, t.created_at, t.updated_at,
 	       t.pending_status, t.proposed_by_company_id, t.proposed_by_user_id,
-	       fc.company_name, tc.company_name, fa.account_type, ta.account_type, cu.name, uu.name, pu.name
+	       fc.company_name, tc.company_name, fa.account_type, ta.account_type, cu.name, uu.name, pu.name,
+	       (fa.deleted_at IS NOT NULL OR fc.deleted_at IS NOT NULL), (ta.deleted_at IS NOT NULL OR tc.deleted_at IS NOT NULL)
 	FROM transfers t
 	JOIN accounts fa ON fa.id = t.from_account_id
 	JOIN company fc ON fc.id = fa.company_id
@@ -246,7 +247,8 @@ func scanTransferRow(row interface{ Scan(...interface{}) error }) (models.Transf
 		&t.CreatedByUser, &t.UpdatedByUser, &t.CreatedAt, &t.UpdatedAt,
 		&t.PendingStatus, &t.ProposedByCompanyID, &t.ProposedByUserID,
 		&t.FromCompanyName, &t.ToCompanyName, &t.FromAccountType, &t.ToAccountType,
-		&t.CreatedByName, &t.UpdatedByName, &proposedByName)
+		&t.CreatedByName, &t.UpdatedByName, &proposedByName,
+		&t.FromAccountDeleted, &t.ToAccountDeleted)
 	if err == nil {
 		t.ProposedByName = utils.NullStringOrEmpty(proposedByName)
 	}
@@ -413,6 +415,22 @@ func ProposeTransferStatus(c *gin.Context) {
 	}
 	if !isSenderMember && !isReceiverMember {
 		c.JSON(http.StatusNotFound, gin.H{"error": utils.Msg(c, "transfer_not_found")})
+		return
+	}
+
+	// A reversal needs the other side to approve it and move money back
+	// between both accounts — impossible once either is deleted.
+	var hasDeleted bool
+	if err := config.DB.QueryRow(`
+		SELECT EXISTS(
+			SELECT 1 FROM transfers t
+			JOIN accounts a ON a.id IN (t.from_account_id, t.to_account_id)
+			WHERE t.id = $1 AND a.deleted_at IS NOT NULL)`, id).Scan(&hasDeleted); err != nil {
+		utils.RespondDBError(c, err)
+		return
+	}
+	if hasDeleted {
+		c.JSON(http.StatusConflict, gin.H{"error": utils.Msg(c, "transfer_account_deleted")})
 		return
 	}
 

@@ -3,7 +3,7 @@ import { useNavigate } from 'react-router-dom'
 import { api, STATUS_COLORS } from '../api.js'
 import {
   ErrorNote, Money, StampBadge, IconSearch, IconPlus, IconBuilding, IconArrowRight,
-  IconTrash, IconClose, IconWallet, IconSwap, IconGrid, IconClock, IconBolt, IconCheck,
+  IconTrash, IconPencil, IconClose, IconWallet, IconSwap, IconGrid, IconClock, IconBolt, IconCheck,
 } from './Shared.jsx'
 import { getCached, setCached } from '../cache.js'
 import { useT } from '../i18n.jsx'
@@ -11,6 +11,7 @@ import PageLayout from './PageLayout.jsx'
 import InsightsCard from './InsightsCard.jsx'
 import EmptyState from './EmptyState.jsx'
 import DropdownMenu from './DropdownMenu.jsx'
+import CompanyActionDialog from './CompanyActionDialog.jsx'
 import { SkeletonLine, SkeletonCard } from './Skeleton.jsx'
 import { motion, AnimatePresence } from 'framer-motion'
 import { useMotionVariants, listVariants, listItemVariants, staticCardVariants, buttonVariants } from '../motion/index.js'
@@ -71,6 +72,8 @@ export default function Dashboard({ token, user, onOpenCompany }) {
   const [creating, setCreating] = useState(false)
   const [newName, setNewName] = useState('')
   const [error, setError] = useState('')
+  // { mode: 'rename' | 'delete', company } while the password dialog is open
+  const [companyDialog, setCompanyDialog] = useState(null)
   const [loading, setLoading] = useState(() => !getCached('companies'))
   const [period, setPeriod] = useState(7) // days — drives KPI deltas only
   const [commandHintDismissed, setCommandHintDismissed] = useState(() => localStorage.getItem('lekha_command_hint_dismissed') === '1')
@@ -133,16 +136,6 @@ export default function Dashboard({ token, user, onOpenCompany }) {
       refresh()
     } catch (err) {
       setError(err.message)
-    }
-  }
-
-  async function removeCompany(id) {
-    setError('')
-    try {
-      await api.deleteCompany(token, id)
-      refresh()
-    } catch (err) {
-      setError(err.message) // e.g. FK violation if it still has accounts — real API error, shown as-is
     }
   }
 
@@ -490,10 +483,17 @@ export default function Dashboard({ token, user, onOpenCompany }) {
                     </div>
                   </div>
 
-                  <DropdownMenu
-                    trigger={<button className="icon-menu-btn company-row-menu" aria-label={t('company_menu_label')} onClick={(e) => e.stopPropagation()}>⋯</button>}
-                    items={[{ label: t('delete_company_label'), icon: <IconTrash />, danger: true, onSelect: () => removeCompany(c.id) }]}
-                  />
+                  {/* Rename/delete are admin-only (the backend enforces it too), so
+                      non-admins get no menu rather than one full of dead items. */}
+                  {c.is_admin && (
+                    <DropdownMenu
+                      trigger={<button className="icon-menu-btn company-row-menu" aria-label={t('company_menu_label')}>⋯</button>}
+                      items={[
+                        { label: t('company_rename'), icon: <IconPencil />, onSelect: () => setCompanyDialog({ mode: 'rename', company: c }) },
+                        { label: t('company_delete'), icon: <IconTrash />, danger: true, onSelect: () => setCompanyDialog({ mode: 'delete', company: c }) },
+                      ]}
+                    />
+                  )}
 
                   <IconArrowRight className="company-row-arrow" />
                 </motion.div>
@@ -592,6 +592,13 @@ export default function Dashboard({ token, user, onOpenCompany }) {
           )}
         </section>
       </div>
+
+      <CompanyActionDialog
+        target={companyDialog}
+        token={token}
+        onClose={() => setCompanyDialog(null)}
+        onDone={() => { setCompanyDialog(null); refresh() }}
+      />
     </PageLayout>
   )
 }
