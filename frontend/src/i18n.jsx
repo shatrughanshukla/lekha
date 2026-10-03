@@ -19,9 +19,10 @@ const DICTIONARY = {
 
     // -- auth screen --
     tagline: 'A ledger for money that moves — built to be read, not just trusted.',
-    principle_1: 'Keep every bank and cash account, across every company you run, in one place.',
-    principle_2: 'Move money between accounts and track its status from pending to completed.',
-    principle_3: 'Type something like "pending transfers over 5000" into search to filter instantly.',
+    principle_1: "Manage every company you run, and the bank and cash accounts under each, in one place.",
+    principle_2: "Transfers between companies wait for the other side's approval, and reversals need their agreement too.",
+    principle_3: "Reports and insights show volume, status and type breakdowns, calculated from your own records.",
+    principle_4: "Ask the assistant about your accounts and pending transfers. It only suggests; you confirm every action.",
     sign_in: 'Sign in',
     sign_up: 'Sign up',
     name_label: 'Name',
@@ -447,9 +448,10 @@ const DICTIONARY = {
     sign_out: 'साइन आउट',
 
     tagline: 'पैसों की हर हलचल का हिसाब — भरोसे पर नहीं, पढ़ने पर आधारित।',
-    principle_1: 'अपनी हर कंपनी के बैंक और कैश खाते एक ही जगह रखें।',
-    principle_2: 'खातों के बीच पैसे भेजें और उसकी स्थिति लंबित से पूर्ण तक ट्रैक करें।',
-    principle_3: '"5000 से ज़्यादा के लंबित ट्रांसफर" जैसा कुछ खोज में लिखें और तुरंत फ़िल्टर करें।',
+    principle_1: "अपनी हर कंपनी और उसके बैंक व कैश खाते एक ही जगह संभालें।",
+    principle_2: "कंपनियों के बीच ट्रांसफर दूसरे पक्ष की स्वीकृति तक लंबित रहते हैं, और उलटने के लिए भी उनकी सहमति चाहिए।",
+    principle_3: "रिपोर्ट और इनसाइट्स आपके अपने रिकॉर्ड से गणना की गई मात्रा, स्थिति और प्रकार का विवरण दिखाते हैं।",
+    principle_4: "सहायक से अपने खातों और लंबित ट्रांसफर के बारे में पूछें। वह केवल सुझाव देता है; हर कार्रवाई की पुष्टि आप करते हैं।",
     sign_in: 'साइन इन',
     sign_up: 'साइन अप',
     name_label: 'नाम',

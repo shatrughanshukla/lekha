@@ -87,6 +87,17 @@ function RevealSection({ className, children }) {
  * Recharts bar chart. `active` defers the bars growing from 0 until the
  * panel has actually entered the viewport (see RevealSection above),
  * rather than snapping straight to full width on mount. */
+/** Accounts have no name of their own (just a type and an id), so a row is
+ * labelled "Company · TYPE · abcd" -- the last part is the first four
+ * characters of the account id, the same prefix shown on the account card, so
+ * two accounts of the same company and type can always be told apart. */
+function withAccountLabels(items, tAccountType) {
+  return items.map((a) => ({
+    ...a,
+    label: `${a.company_name} · ${tAccountType(a.name)} · ${a.id.slice(0, 4)}`,
+  }))
+}
+
 function RankedBarList({ items, nameKey, sublabelKey, valueKey, color, active }) {
   const [grown, setGrown] = useState(false)
   useEffect(() => {
@@ -103,7 +114,7 @@ function RankedBarList({ items, nameKey, sublabelKey, valueKey, color, active })
           <div className="ranked-bar-row-top">
             <span className="ranked-bar-name" title={item[nameKey]}>
               {item[nameKey]}
-              {sublabelKey && item[sublabelKey] && <span className="ranked-bar-sublabel"> \u00b7 {item[sublabelKey]}</span>}
+              {sublabelKey && item[sublabelKey] && <span className="ranked-bar-sublabel">{' · '}{item[sublabelKey]}</span>}
             </span>
             <span className="ranked-bar-value mono">{formatINRShort(item[valueKey])}</span>
           </div>
@@ -155,7 +166,7 @@ function IncomingOutgoingBars({ incoming, outgoing, active, t }) {
 }
 
 export default function ReportsPage({ token }) {
-  const { t, tType, dateLocale } = useT()
+  const { t, tType, tAccountType, dateLocale } = useT()
 
   const [companies, setCompanies] = useState([])
   const [scopeCompanyId, setScopeCompanyId] = useState('')
@@ -189,7 +200,10 @@ export default function ReportsPage({ token }) {
     api.getReports(token, {
       companyId: scopeCompanyId || undefined,
       since: bounds.since?.toISOString(),
-      until: bounds.until?.toISOString(),
+      // Every range here ends "now", so there is no real upper bound. Sending
+      // the browser clock as one meant a transfer stamped even slightly after
+      // it (clock skew, or the page left open) was silently left out.
+      until: undefined,
     })
       .then((data) => { if (!cancelled) { setReport(data); setInsightFetchedAt(Date.now()) } })
       .catch((err) => { if (!cancelled) setError(err.message) })
@@ -260,7 +274,7 @@ export default function ReportsPage({ token }) {
       const fresh = await api.getReports(token, {
         companyId: scopeCompanyId || undefined,
         since: bounds.since?.toISOString(),
-        until: bounds.until?.toISOString(),
+        until: undefined, // open-ended: see the note on the first fetch above
       })
       setReport(fresh)
       setInsightFetchedAt(Date.now())
@@ -562,7 +576,7 @@ export default function ReportsPage({ token }) {
                   {(entered) => (
                     <>
                       <h2>{t('chart_top_accounts')}</h2>
-                      <RankedBarList items={data.top_accounts} nameKey="company_name" valueKey="amount" color="var(--color-warning)" active={entered} />
+                      <RankedBarList items={withAccountLabels(data.top_accounts, tAccountType)} nameKey="label" valueKey="amount" color="var(--color-warning)" active={entered} />
                     </>
                   )}
                 </RevealSection>

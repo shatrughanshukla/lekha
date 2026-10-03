@@ -77,6 +77,7 @@ export default function DropdownMenu({ trigger, items, align = 'end' }) {
   return (
     <>
       <span
+        className="dropdown-trigger"
         ref={triggerRef}
         onClick={(e) => { e.stopPropagation(); open ? setOpen(false) : openMenu() }}
         aria-haspopup="menu"

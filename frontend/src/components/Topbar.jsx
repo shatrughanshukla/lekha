@@ -73,6 +73,7 @@ export default function Topbar({
           whileHover="hover"
           whileTap="tap"
           title={t('edit_profile')}
+          aria-label={`${t('edit_profile')}: ${user.name}`}
         >
           {user.profile_picture_url && !avatarBroken ? (
             <img
@@ -97,7 +98,7 @@ export default function Topbar({
           whileHover="hover"
           whileTap="tap"
         >
-          <LogOut size={15} /> {t('sign_out')}
+          <LogOut size={15} /> <span className="top-bar-signout-label">{t('sign_out')}</span>
         </motion.button>
       </div>
     </header>

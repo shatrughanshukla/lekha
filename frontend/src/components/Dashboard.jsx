@@ -5,7 +5,7 @@ import {
   ErrorNote, Money, StampBadge, IconSearch, IconPlus, IconBuilding, IconArrowRight,
   IconTrash, IconPencil, IconClose, IconWallet, IconSwap, IconGrid, IconClock, IconBolt, IconCheck,
 } from './Shared.jsx'
-import { getCached, setCached } from '../cache.js'
+import { getCached, setCached, clearCached } from '../cache.js'
 import { useT } from '../i18n.jsx'
 import PageLayout from './PageLayout.jsx'
 import InsightsCard from './InsightsCard.jsx'
@@ -597,7 +597,13 @@ export default function Dashboard({ token, user, onOpenCompany }) {
         target={companyDialog}
         token={token}
         onClose={() => setCompanyDialog(null)}
-        onDone={() => { setCompanyDialog(null); refresh() }}
+        onDone={() => {
+          // A deleted company's per-company cache (accounts, transfers, members)
+          // must not outlive it, or opening its URL would flash stale data.
+          if (companyDialog?.mode === 'delete') clearCached(`company:${companyDialog.company.id}:`)
+          setCompanyDialog(null)
+          refresh()
+        }}
       />
     </PageLayout>
   )

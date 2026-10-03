@@ -219,6 +219,7 @@ func buildGlobalReport(userID string, since, until *time.Time) (models.ReportDat
 		FROM account_activity aa
 		JOIN accounts a ON a.id = aa.account_id
 		JOIN company co ON co.id = a.company_id
+		WHERE a.deleted_at IS NULL AND co.deleted_at IS NULL
 		GROUP BY a.id, a.account_type, co.company_name
 		ORDER BY COALESCE(SUM(aa.amount), 0) DESC
 		LIMIT 5`, args...)
@@ -340,6 +341,7 @@ func buildCompanyReport(companyID, companyName string, since, until *time.Time) 
 		FROM account_activity aa
 		JOIN accounts a ON a.id = aa.account_id
 		JOIN company co ON co.id = a.company_id
+		WHERE a.deleted_at IS NULL AND co.deleted_at IS NULL
 		GROUP BY a.id, a.account_type, co.company_name
 		ORDER BY COALESCE(SUM(aa.amount), 0) DESC
 		LIMIT 5`, args...)

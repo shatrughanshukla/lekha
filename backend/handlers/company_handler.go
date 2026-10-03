@@ -281,12 +281,16 @@ func DeleteCompany(c *gin.Context) {
 	}
 	defer tx.Rollback()
 
-	if _, err := tx.Exec(`
+	// Every account the company owns goes with it, in the same transaction:
+	// either the company and all its accounts are marked deleted, or none are.
+	accResult, err := tx.Exec(`
 		UPDATE accounts SET deleted_at = NOW(), is_active = false, updated_by = $2
-		WHERE company_id = $1 AND deleted_at IS NULL`, id, userID); err != nil {
+		WHERE company_id = $1 AND deleted_at IS NULL`, id, userID)
+	if err != nil {
 		utils.RespondDBError(c, err)
 		return
 	}
+	accountsDeleted, _ := accResult.RowsAffected()
 	result, err := tx.Exec(`
 		UPDATE company SET deleted_at = NOW(), updated_by = $2
 		WHERE id = $1 AND deleted_at IS NULL`, id, userID)
@@ -303,7 +307,10 @@ func DeleteCompany(c *gin.Context) {
 		return
 	}
 
-	c.JSON(http.StatusOK, gin.H{"message": utils.Msg(c, "company_deleted")})
+	c.JSON(http.StatusOK, gin.H{
+		"message":          utils.Msg(c, "company_deleted"),
+		"accounts_deleted": accountsDeleted,
+	})
 }
 
 // ListCompanyMembers handles GET /companies/:id/members

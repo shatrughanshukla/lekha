@@ -1,0 +1,179 @@
+/* =========================================================================
+   LEKHA — responsive pass for the signed-in app.
+
+   Loaded AFTER index.css so these rules win at equal specificity. Why this
+   file exists: below ~450px the dashboard's content was wider than the
+   screen (grid tracks and flex rows sized to their widest content), so the
+   whole page became wider than the viewport — cards stopped short of the
+   right edge, buttons were cut off, and the top bar's menu button slid off
+   the left edge. Status badges also drifted because their column was sized
+   to whatever sat next to them.
+
+   Rules of thumb used throughout:
+   - grid tracks are minmax(0, 1fr), never bare 1fr (a bare 1fr can't shrink
+     below its content, which is how a long amount blew the layout out);
+   - anything that carries a status badge or an amount puts it in a fixed
+     right-aligned column, so it sits at the same x in every row.
+   ========================================================================= */
+
+/* ------------------------------------------------------------ top bar */
+
+/* flex-end meant that when the bar overflowed, the overflow went off the
+   LEFT edge (hiding the menu button). space-between keeps the menu button
+   anchored left and lets the right group shrink. */
+.top-bar { justify-content: space-between; gap: var(--space-2); }
+.top-bar-right { min-width: 0; }
+.user-name-btn { min-width: 0; }
+
+@media (max-width: 640px) {
+  .top-bar { padding: 10px 14px; }
+  .top-bar-right { gap: 8px; }
+  .page-layout { padding: var(--space-6) var(--space-4) 64px; }
+  .page-layout-head { gap: var(--space-3); margin-bottom: var(--space-5); }
+  .page-layout-actions { flex-shrink: 1; flex-wrap: wrap; width: 100%; }
+}
+
+/* Small phones: keep the avatar (it opens the profile) and the sign-out
+   icon; drop the text that doesn't fit. */
+@media (max-width: 480px) {
+  .user-name { display: none; }
+  .top-bar-signout-label { display: none; }
+}
+
+/* ---------------------------------------------------------- dashboard */
+
+/* Grid items default to min-width:auto, so a wide child (a long amount, a
+   badge) forces the track — and the page — wider than the screen. */
+.dash-summary-row > *,
+.dash-bottom-row > *,
+.reports-row-primary > *,
+.reports-row-half > *,
+.reports-grid-2 > * { min-width: 0; }
+
+@media (max-width: 900px) {
+  .dash-summary-row,
+  .dash-bottom-row { grid-template-columns: minmax(0, 1fr); }
+}
+
+@media (max-width: 640px) {
+  .panel { padding: var(--space-4); }
+
+  /* KPI tiles: icon | label+value, with the trend under the label instead of
+     fighting it for width. */
+  .kpi-tile { display: grid; grid-template-columns: auto minmax(0, 1fr); column-gap: var(--space-3); row-gap: 2px; padding: var(--space-3); }
+  .kpi-tile-delta { grid-column: 2; margin-left: 0; }
+  .kpi-tile { min-height: 76px; align-content: center; }
+  .kpi-tile-value { font-size: var(--text-lg); }
+
+  /* A balance like 9,99,91,06,044.00 is 18 monospace characters; scale the
+     figure with the screen so it always fits its panel. */
+  .balance-figure { font-size: clamp(1.25rem, 6.4vw, var(--text-3xl)); overflow-wrap: anywhere; }
+}
+
+/* "Your companies" header: filter box + New company button share one row and
+   shrink together instead of the box holding a 200px minimum. */
+.search-box-sm { min-width: 0; }
+@media (max-width: 640px) {
+  .section-toolbar { align-items: stretch; gap: var(--space-3); }
+  .section-toolbar-actions { width: 100%; }
+  .section-toolbar-actions .search-box { flex: 1; min-width: 0; width: auto; }
+  .section-toolbar-actions .btn-primary { flex-shrink: 0; white-space: nowrap; }
+}
+
+/* ------------------------------------------------------ company rows */
+
+/* ≤900px: a 12-column grid so the layout never depends on content width.
+     row 1  avatar · name/opened            ⋯ →
+     row 2  balance (wide) | accounts | transfers
+     row 3  status dot + pending            mini-bars (right) */
+@media (max-width: 900px) {
+  .company-row {
+    grid-template-columns: repeat(12, minmax(0, 1fr));
+    grid-template-areas: none;
+    column-gap: var(--space-2);
+    row-gap: var(--space-3);
+    padding: var(--space-3) var(--space-4);
+    align-items: center;
+  }
+  .company-row > * { grid-area: auto; min-width: 0; }
+
+  .company-row-avatar { grid-column: 1 / span 2; grid-row: 1; justify-self: start; }
+  .company-row-name { grid-column: 3 / span 7; grid-row: 1; flex-direction: column; align-items: stretch; gap: 0; }
+  .company-row > .dropdown-trigger { grid-column: 10 / span 2; grid-row: 1; justify-self: end; }
+  .company-row-arrow { grid-column: 12; grid-row: 1; justify-self: end; }
+
+  /* Balance gets the widest share: it is the one value that can be long. */
+  .company-row > :nth-child(3) { grid-column: 1 / span 6; grid-row: 2; }
+  .company-row > :nth-child(4) { grid-column: 7 / span 3; grid-row: 2; }
+  .company-row > :nth-child(5) { grid-column: 10 / span 3; grid-row: 2; }
+
+  .company-row > .mini-bars { grid-column: 9 / span 4; grid-row: 3; justify-self: end; width: 100%; max-width: 110px; }
+  .company-row-status { grid-column: 1 / span 8; grid-row: 3; }
+}
+
+/* ---------------------------------------------------- activity + ledger */
+
+@media (max-width: 640px) {
+  /* Dashboard "Recent activity": amount over status in ONE right-aligned
+     column, so every badge ends at the same x whatever the amount is. */
+  .activity-row { align-items: flex-start; }
+  .activity-row-main { flex: 1; }
+  .activity-row-right { flex-direction: column; align-items: flex-end; gap: 6px; }
+  .activity-row-right .mono { white-space: nowrap; }
+
+  /* Transfers / Transactions ledger: two fixed lines per row.
+       date ................. STATUS
+       type / note ......... amount
+     Status and amount share the right edge; the old auto-sized first column
+     is what made the badge overlap long dates. */
+  .ledger-table-row {
+    grid-template-columns: minmax(0, 1fr) auto;
+    grid-template-areas:
+      "date   status"
+      "type   amount";
+    row-gap: 6px;
+    column-gap: var(--space-3);
+    align-items: start;
+  }
+  .ledger-table-row > :nth-child(1) { grid-area: date; justify-self: start; align-self: center; }
+  .ledger-table-row > :nth-child(2) { grid-area: type; min-width: 0; }
+  .ledger-table-row > :nth-child(4) { grid-area: status; justify-self: end; }
+  .ledger-table-row > :nth-child(5) { grid-area: amount; justify-self: end; text-align: right; white-space: nowrap; }
+  /* The whole row opens the detail, so the little info button is redundant
+     on touch. */
+  .ledger-table-row > :nth-child(6) { display: none; }
+}
+
+/* Company page statement header: balance on its own full-width line (it is
+   the one value that can be long), then the other three side by side. */
+@media (max-width: 640px) {
+  .stat-strip > .stat:first-child { grid-column: 1 / -1; }
+  .stat-strip > .stat:first-child .stat-value { white-space: normal; overflow: visible; overflow-wrap: anywhere; }
+}
+
+/* ------------------------------------------------------------- reports */
+
+@media (max-width: 640px) {
+  .reports-filters { width: 100%; }
+  .reports-filters > * { flex: 1 1 130px; min-width: 0; max-width: 100%; }
+  .reports-scope-select { max-width: 100%; }
+}
+
+/* ----------------------------------------------------------- assistant */
+
+/* 100vh on a phone includes the area behind the browser's address bar, which
+   pushed the input row off-screen; dvh tracks what is actually visible. */
+@media (max-width: 640px) {
+  .assistant-page.page-layout-flush { height: calc(100dvh - 58px); }
+}
+
+/* ------------------------------------------------------- sign-in / sign-up */
+
+/* The hero copy sits above the form on phones, so keep it compact enough
+   that the form starts close to the top of the screen. */
+@media (max-width: 640px) {
+  .auth-hero { padding: 24px 20px; min-height: 0; }
+  .hero-tagline { font-size: 0.98rem; margin: 10px 0 18px; }
+  .hero-principles { gap: 10px; }
+  .hero-principles li { font-size: 0.88rem; line-height: 1.45; }
+}
