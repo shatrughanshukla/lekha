@@ -1,0 +1,85 @@
+/* Sign-in / sign-up hero: rotating facts. Colours are existing tokens only. */
+
+.auth-facts { max-width: 520px; margin-top: var(--space-8); }
+
+.auth-facts-label {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  margin: 0 0 var(--space-3);
+  font-size: var(--text-xs);
+  font-weight: var(--weight-semibold);
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--color-primary);
+}
+/* a short ledger rule before the label */
+.auth-facts-label::before { content: ''; width: 24px; height: 1px; background: var(--color-primary); }
+
+/* every fact occupies the same grid cell, so the stage is as tall as the
+   tallest fact and nothing shifts when they swap */
+.auth-facts-stage { display: grid; }
+.auth-fact {
+  grid-area: 1 / 1;
+  margin: 0;
+  font-size: 1.05rem;
+  line-height: 1.6;
+  color: var(--text-body);
+  opacity: 0;
+  visibility: hidden;
+  transform: translateY(6px);
+  transition: opacity 0.45s var(--ease-out), transform 0.45s var(--ease-out), visibility 0s linear 0.45s;
+}
+.auth-fact.active {
+  opacity: 1;
+  visibility: visible;
+  transform: none;
+  transition: opacity 0.45s var(--ease-out) 0.1s, transform 0.45s var(--ease-out) 0.1s, visibility 0s;
+}
+
+.auth-facts-dots { display: flex; align-items: center; gap: 8px; margin-top: var(--space-5); }
+.auth-facts-dot {
+  position: relative;
+  width: 8px;
+  height: 8px;
+  padding: 0;
+  border: 0;
+  border-radius: 999px;
+  background: var(--glass-border-hi);
+  cursor: pointer;
+  transition: width 0.3s var(--ease-out), background-color 0.2s;
+}
+/* a bigger invisible hit area for touch */
+.auth-facts-dot::after { content: ''; position: absolute; inset: -10px -4px; }
+.auth-facts-dot:hover { background: var(--text-faint); }
+.auth-facts-dot:focus-visible { outline: 2px solid var(--color-primary); outline-offset: 3px; }
+.auth-facts-dot.active { width: 34px; }
+
+.auth-facts-fill {
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  background: var(--color-primary);
+  transform-origin: left center;
+  transform: scaleX(0);
+}
+.auth-facts-dot.active .auth-facts-fill { animation: auth-fact-fill 8s linear forwards; }
+@keyframes auth-fact-fill { to { transform: scaleX(1); } }
+
+/* hovering or focusing anywhere in the panel pauses the countdown */
+.auth-facts:hover .auth-facts-fill,
+.auth-facts:focus-within .auth-facts-fill { animation-play-state: paused; }
+
+/* Reduced motion: no countdown, no auto-advance, no fades. The active dot
+   just shows solid and the dots are the only way to change fact. */
+@media (prefers-reduced-motion: reduce) {
+  .auth-fact, .auth-fact.active { transition: none; transform: none; }
+  .auth-facts-dot { transition: none; }
+  .auth-facts-dot.active .auth-facts-fill { animation: none; transform: scaleX(1); }
+}
+
+@media (max-width: 640px) {
+  .auth-facts { margin-top: var(--space-5); }
+  .auth-fact { font-size: 0.95rem; line-height: 1.55; }
+  .auth-facts-dots { margin-top: var(--space-4); }
+}

@@ -437,14 +437,14 @@ export default function CompanyView({ token, user, company, onBack }) {
           <input placeholder={t('note_placeholder')} value={notes} onChange={(e) => setNotes(e.target.value)} />
           <button className="btn-primary small" type="submit">{t('send')}</button>
         </form>
-        <p className="panel-hint">
-          {derivedTypeLabel
-            ? (() => {
-                const [before, after] = t('will_be_recorded', { type: '\u0000' }).split('\u0000')
-                return <>{before}<strong>{derivedTypeLabel}</strong>{after}</>
-              })()
-            : t('type_auto_detect_hint')}
-        </p>
+        {derivedTypeLabel && (
+          <p className="panel-hint">
+            {(() => {
+              const [before, after] = t('will_be_recorded', { type: '\u0000' }).split('\u0000')
+              return <>{before}<strong>{derivedTypeLabel}</strong>{after}</>
+            })()}
+          </p>
+        )}
 
         {/* Compact search toolbar — was a standalone card, now lives right
             above the table it filters (Phase 3 refinement, Problem 5). */}

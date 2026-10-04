@@ -1,13 +1,14 @@
-import { useState, useEffect, useMemo } from 'react'
+import { useState, useEffect, useMemo, useRef, useCallback } from 'react'
 import {
   LineChart, Line, PieChart, Pie, Cell,
   XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer,
 } from 'recharts'
 import { api, STATUS_COLORS } from '../api.js'
-import { Money, ErrorNote, IconBuilding } from './Shared.jsx'
+import { Money, ErrorNote, IconBuilding, IconSparkle, IconClose } from './Shared.jsx'
 import { useT } from '../i18n.jsx'
 import PageLayout from './PageLayout.jsx'
 import InsightsCard from './InsightsCard.jsx'
+import '../styles/reports-explain.css'
 import EmptyState from './EmptyState.jsx'
 import { SkeletonLine } from './Skeleton.jsx'
 import { motion } from 'framer-motion'
@@ -65,11 +66,12 @@ function previousBounds({ since, until }) {
  * moment instead of animating immediately on page load while off-screen
  * (which is what "all animations happen immediately" looked like before).
  */
-function RevealSection({ className, children }) {
+function RevealSection({ id, className, children }) {
   const [entered, setEntered] = useState(false)
   const vars = useMotionVariants(staticCardVariants)
   return (
     <motion.section
+      id={id}
       className={className}
       variants={vars}
       initial="initial"
@@ -96,6 +98,37 @@ function withAccountLabels(items, tAccountType) {
     ...a,
     label: `${a.company_name} · ${tAccountType(a.name)} · ${a.id.slice(0, 4)}`,
   }))
+}
+
+// Chart ids understood by GET /reports/explain, and the title each chart already has.
+const CHART_TITLE_KEYS = {
+  volume: 'chart_volume_value',
+  status: 'chart_status_breakdown',
+  companies: 'chart_top_companies',
+  flow: 'chart_incoming_outgoing',
+  type: 'chart_type_distribution',
+  accounts: 'chart_top_accounts',
+}
+const NO_EXPLANATION = { chart: null, loading: false, text: '', cached: false, error: '', fetchedAt: null }
+
+/** Chart title + an "Explain" button that asks the AI to explain this chart in
+ * the AI summary section at the top of the page. */
+function ChartHead({ chart, explained, onExplain, t }) {
+  const title = t(CHART_TITLE_KEYS[chart])
+  return (
+    <div className="reports-chart-head">
+      <h2>{title}</h2>
+      <button
+        type="button"
+        className="btn-ghost small reports-explain-btn"
+        onClick={() => onExplain(chart)}
+        aria-pressed={explained}
+        aria-label={t('explain_chart_aria', { name: title })}
+      >
+        <IconSparkle width={14} height={14} /> {t('explain_chart')}
+      </button>
+    </div>
+  )
 }
 
 function RankedBarList({ items, nameKey, sublabelKey, valueKey, color, active }) {
@@ -267,6 +300,57 @@ export default function ReportsPage({ token }) {
     return list
   }, [data, t])
 
+  // --- "Explain this chart" -------------------------------------------------
+  // Clicking Explain on a chart asks the backend to explain THAT chart (from the
+  // same numbers and the real transfers behind them) and shows the answer in
+  // the AI summary section, as a second tab next to the usual summary.
+  const [explain, setExplain] = useState(NO_EXPLANATION)
+  const [aiTab, setAiTab] = useState('summary') // 'summary' | 'chart'
+  const aiRef = useRef(null)
+  const explainReq = useRef(0)
+
+  // A different company or date range means a different chart: drop the old explanation.
+  useEffect(() => {
+    explainReq.current += 1
+    setExplain(NO_EXPLANATION)
+    setAiTab('summary')
+  }, [scopeCompanyId, range])
+
+  const scrollTo = useCallback((el) => {
+    const reduced = window.matchMedia?.('(prefers-reduced-motion: reduce)').matches
+    el?.scrollIntoView({ behavior: reduced ? 'auto' : 'smooth', block: 'start' })
+  }, [])
+
+  const explainChart = useCallback(async (chart, { force = false } = {}) => {
+    setAiTab('chart')
+    scrollTo(aiRef.current)
+    // Already explained (and nothing changed since): just show it again.
+    if (!force && explain.chart === chart && explain.text && !explain.error) return
+    const reqId = ++explainReq.current
+    setExplain({ ...NO_EXPLANATION, chart, loading: true })
+    try {
+      const res = await api.explainReportChart(token, {
+        chart,
+        companyId: scopeCompanyId || undefined,
+        since: bounds.since?.toISOString(),
+      })
+      if (reqId !== explainReq.current) return // a newer request replaced this one
+      setExplain({ chart, loading: false, text: res.explanation, cached: !!res.cached, error: '', fetchedAt: Date.now() })
+    } catch (err) {
+      if (reqId !== explainReq.current) return
+      setExplain({ ...NO_EXPLANATION, chart, error: err.message })
+    }
+  }, [token, scopeCompanyId, bounds.since, explain, scrollTo])
+
+  function closeExplanation() {
+    explainReq.current += 1
+    setExplain(NO_EXPLANATION)
+    setAiTab('summary')
+  }
+  const explainedChart = aiTab === 'chart' ? explain.chart : null
+  const panelClass = (chart, extra = '') =>
+    `panel reports-chart-panel${extra ? ` ${extra}` : ''}${explain.chart === chart ? ' explained' : ''}`
+
   async function refreshInsight() {
     setLoading(true)
     setError('')
@@ -338,20 +422,60 @@ export default function ReportsPage({ token }) {
           page-load entrance. */}
       <motion.div
         className="reports-ai-summary"
+        ref={aiRef}
         initial={{ opacity: 0, y: 14 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ duration: duration.base, ease: easing.out }}
       >
-        <InsightsCard
-          title={t('ai_summary_title')}
-          insights={report ? { insight: report.insight, cached: report.cached } : null}
-          loading={loading}
-          onGenerate={refreshInsight}
-          emptyHint={t('reports_page_hint')}
-          fetchedAt={insightFetchedAt}
-          findings={findings}
-          compact
-        />
+        {explain.chart && (
+          <div className="reports-ai-tabs" role="tablist" aria-label={t('ai_summary_title')}>
+            <button type="button" role="tab" className="reports-ai-tab" aria-selected={aiTab === 'summary'} onClick={() => setAiTab('summary')}>
+              {t('explain_tab_summary')}
+            </button>
+            <button type="button" role="tab" className="reports-ai-tab" aria-selected={aiTab === 'chart'} onClick={() => setAiTab('chart')}>
+              {t(CHART_TITLE_KEYS[explain.chart])}
+            </button>
+            <div className="reports-ai-tab-actions">
+              <button type="button" className="reports-ai-tab-action" onClick={() => scrollTo(document.getElementById(`report-chart-${explain.chart}`))}>
+                {t('explain_back_to_chart')}
+              </button>
+              <button type="button" className="reports-ai-tab-action" onClick={closeExplanation} aria-label={t('explain_close')} title={t('explain_close')}>
+                <IconClose width={14} height={14} />
+              </button>
+            </div>
+          </div>
+        )}
+
+        {aiTab === 'chart' && explain.chart ? (
+          explain.error && !explain.loading ? (
+            <section className="panel reports-ai-error" role="tabpanel">
+              <ErrorNote message={explain.error} />
+              <button type="button" className="btn-ghost small" onClick={() => explainChart(explain.chart, { force: true })}>{t('explain_retry')}</button>
+            </section>
+          ) : (
+            <InsightsCard
+              key={`explain-${explain.chart}`}
+              title={t('explain_card_title', { chart: t(CHART_TITLE_KEYS[explain.chart]) })}
+              insights={explain.text ? { insight: explain.text, cached: explain.cached } : null}
+              loading={explain.loading}
+              onGenerate={() => explainChart(explain.chart, { force: true })}
+              emptyHint=""
+              fetchedAt={explain.fetchedAt}
+              compact
+            />
+          )
+        ) : (
+          <InsightsCard
+            title={t('ai_summary_title')}
+            insights={report ? { insight: report.insight, cached: report.cached } : null}
+            loading={loading}
+            onGenerate={refreshInsight}
+            emptyHint={t('reports_page_hint')}
+            fetchedAt={insightFetchedAt}
+            findings={findings}
+            compact
+          />
+        )}
       </motion.div>
 
       {/* Same fix as the AI summary above, same reason: always visible on
@@ -422,10 +546,10 @@ export default function ReportsPage({ token }) {
           {/* Row 1 -- primary trend (amount + count, dual axis) + status breakdown */}
           <div className="reports-grid-row reports-row-primary">
             {data.time_series.length > 0 && (
-              <RevealSection className="panel reports-chart-panel reports-chart-primary">
+              <RevealSection id="report-chart-volume" className={panelClass('volume', 'reports-chart-primary')}>
                 {(entered) => (
                   <>
-                    <h2>{t('chart_volume_value')}</h2>
+                    <ChartHead chart="volume" explained={explainedChart === 'volume'} onExplain={explainChart} t={t} />
                     <p className="reports-chart-subtitle">{t('chart_volume_subtitle')}</p>
                     {entered ? (
                       <ResponsiveContainer width="100%" height={300}>
@@ -468,10 +592,10 @@ export default function ReportsPage({ token }) {
             )}
 
             {statusEntries.length > 0 && (
-              <RevealSection className="panel reports-chart-panel reports-chart-secondary">
+              <RevealSection id="report-chart-status" className={panelClass('status', 'reports-chart-secondary')}>
                 {(entered) => (
                   <>
-                    <h2>{t('chart_status_breakdown')}</h2>
+                    <ChartHead chart="status" explained={explainedChart === 'status'} onExplain={explainChart} t={t} />
                     {entered ? (
                       <>
                         <div className="reports-donut-wrap">
@@ -514,19 +638,19 @@ export default function ReportsPage({ token }) {
               single company, since there's no "other companies" to rank) */}
           <div className="reports-grid-row reports-row-half">
             {hasCompanyChart && (
-              <RevealSection className="panel reports-chart-panel">
+              <RevealSection id="report-chart-companies" className={panelClass('companies')}>
                 {(entered) => (
                   <>
-                    <h2>{t('chart_top_companies')}</h2>
+                    <ChartHead chart="companies" explained={explainedChart === 'companies'} onExplain={explainChart} t={t} />
                     <RankedBarList items={data.top_companies} nameKey="name" valueKey="amount" color="var(--chart-volume)" active={entered} />
                   </>
                 )}
               </RevealSection>
             )}
-            <RevealSection className={`panel reports-chart-panel${hasCompanyChart ? '' : ' reports-chart-full'}`}>
+            <RevealSection id="report-chart-flow" className={panelClass('flow', hasCompanyChart ? '' : 'reports-chart-full')}>
               {(entered) => (
                 <>
-                  <h2>{t('chart_incoming_outgoing')}</h2>
+                  <ChartHead chart="flow" explained={explainedChart === 'flow'} onExplain={explainChart} t={t} />
                   <IncomingOutgoingBars incoming={data.incoming_total} outgoing={data.outgoing_total} active={entered} t={t} />
                 </>
               )}
@@ -538,10 +662,10 @@ export default function ReportsPage({ token }) {
           {(typeEntries.length > 0 || hasAccountsList) && (
             <div className="reports-grid-row reports-row-half">
               {typeEntries.length > 0 && (
-                <RevealSection className={`panel reports-chart-panel${hasAccountsList ? '' : ' reports-chart-full'}`}>
+                <RevealSection id="report-chart-type" className={panelClass('type', hasAccountsList ? '' : 'reports-chart-full')}>
                   {(entered) => (
                     <>
-                      <h2>{t('chart_type_distribution')}</h2>
+                      <ChartHead chart="type" explained={explainedChart === 'type'} onExplain={explainChart} t={t} />
                       {entered ? (
                         <>
                           <div className="reports-donut-wrap">
@@ -572,10 +696,10 @@ export default function ReportsPage({ token }) {
               )}
 
               {hasAccountsList && (
-                <RevealSection className={`panel reports-chart-panel${typeEntries.length > 0 ? '' : ' reports-chart-full'}`}>
+                <RevealSection id="report-chart-accounts" className={panelClass('accounts', typeEntries.length > 0 ? '' : 'reports-chart-full')}>
                   {(entered) => (
                     <>
-                      <h2>{t('chart_top_accounts')}</h2>
+                      <ChartHead chart="accounts" explained={explainedChart === 'accounts'} onExplain={explainChart} t={t} />
                       <RankedBarList items={withAccountLabels(data.top_accounts, tAccountType)} nameKey="label" valueKey="amount" color="var(--color-warning)" active={entered} />
                     </>
                   )}

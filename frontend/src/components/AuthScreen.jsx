@@ -2,6 +2,7 @@ import { useState } from 'react'
 import { Link, useSearchParams } from 'react-router-dom'
 import { api } from '../api.js'
 import { ErrorNote, IconSun, IconMoon } from './Shared.jsx'
+import AuthFacts from './AuthFacts.jsx'
 import { useT } from '../i18n.jsx'
 
 export default function AuthScreen({ onAuthed, theme, setTheme }) {
@@ -16,7 +17,6 @@ export default function AuthScreen({ onAuthed, theme, setTheme }) {
   const [resetSent, setResetSent] = useState(false)
   const { t, lang, setLang } = useT()
 
-  const PRINCIPLES = [t('principle_1'), t('principle_2'), t('principle_3'), t('principle_4')]
 
   async function submit(e) {
     e.preventDefault()
@@ -87,11 +87,7 @@ export default function AuthScreen({ onAuthed, theme, setTheme }) {
             <div className="wordmark hero-wordmark">Lekha</div>
           </Link>
           <p className="hero-tagline">{t('tagline')}</p>
-          <ul className="hero-principles">
-            {PRINCIPLES.map((p) => (
-              <li key={p}>{p}</li>
-            ))}
-          </ul>
+          <AuthFacts />
         </div>
       </div>
 

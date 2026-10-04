@@ -16,6 +16,29 @@
      right-aligned column, so it sits at the same x in every row.
    ========================================================================= */
 
+/* ------------------------------------------------- buttons with an icon */
+
+/* "+ New company": the icon is an inline SVG, so in a plain inline-block
+   button it rides the text baseline and sits a few px above the label's
+   centre. A flex row centres icon and label on the same line. */
+.btn-primary,
+.btn-ghost { display: inline-flex; align-items: center; justify-content: center; gap: 6px; }
+.btn-primary svg,
+.btn-ghost svg { flex-shrink: 0; }
+
+/* ------------------------------------------------- insights / AI headers */
+
+/* Title + [Cached] + "Generated just now" + Refresh used to sit in one
+   non-wrapping row, which pushed Refresh out of the card (and made the whole
+   page wider than the screen) below ~450px. Let the right group wrap. */
+.insights-head { flex-wrap: wrap; row-gap: var(--space-2); }
+.insights-head h2 { min-width: 0; }
+.insights-head-right { flex-wrap: wrap; justify-content: flex-end; min-width: 0; margin-left: auto; gap: var(--space-2) var(--space-3); }
+.insights-meta-inline { display: inline-flex; align-items: center; flex-wrap: wrap; gap: 6px; min-width: 0; }
+@media (max-width: 640px) {
+  .insights-head-right { width: 100%; margin-left: 0; justify-content: space-between; }
+}
+
 /* ------------------------------------------------------------ top bar */
 
 /* flex-end meant that when the bar overflowed, the overflow went off the

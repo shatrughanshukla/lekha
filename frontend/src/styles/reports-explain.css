@@ -1,0 +1,56 @@
+/* Reports: "Explain" buttons on each chart + the chart tab in the AI summary. */
+
+/* h2 + Explain button on one row (the h2 used to be a direct child, so the
+   sibling spacing rules from index.css are mirrored for the wrapper). */
+.reports-chart-head { display: flex; align-items: center; justify-content: space-between; gap: var(--space-3); margin-bottom: 2px; }
+.reports-chart-head h2 { margin: 0; min-width: 0; }
+.reports-chart-head + .ranked-bar-list,
+.reports-chart-head + .reports-donut-wrap,
+.reports-chart-head + .reports-io-list { margin-top: var(--space-3); }
+
+.reports-explain-btn { flex-shrink: 0; color: var(--color-primary); }
+.reports-explain-btn svg { color: var(--color-primary); }
+.reports-explain-btn[aria-pressed='true'] { border-color: var(--color-primary); background: var(--color-primary-dim); }
+
+/* the chart currently being explained */
+.reports-chart-panel.explained { border-color: var(--color-primary); }
+
+/* jump targets sit below the sticky top bar */
+.reports-ai-summary, .reports-chart-panel { scroll-margin-top: 76px; }
+
+/* Summary | <chart name> tabs above the AI card */
+.reports-ai-tabs { display: flex; align-items: center; gap: var(--space-2); margin-bottom: var(--space-3); min-width: 0; }
+.reports-ai-tab {
+  min-width: 0;
+  max-width: 100%;
+  padding: 6px 14px;
+  border: 1px solid var(--glass-border);
+  border-radius: var(--radius-full);
+  background: transparent;
+  color: var(--text-dim);
+  font-size: var(--text-sm);
+  cursor: pointer;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  transition: color var(--duration-fast) var(--ease-out), border-color var(--duration-fast) var(--ease-out), background-color var(--duration-fast) var(--ease-out);
+}
+.reports-ai-tab:hover { color: var(--text); border-color: var(--glass-border-hi); }
+.reports-ai-tab[aria-selected='true'] { color: var(--color-primary); border-color: var(--color-primary); background: var(--color-primary-dim); }
+.reports-ai-tab:focus-visible, .reports-ai-tab-action:focus-visible { outline: 2px solid var(--color-primary); outline-offset: 2px; }
+.reports-ai-tab-actions { display: flex; align-items: center; gap: var(--space-1); margin-left: auto; flex-shrink: 0; }
+.reports-ai-tab-action {
+  display: inline-flex; align-items: center; justify-content: center; gap: 4px;
+  min-height: 30px; padding: 0 var(--space-2);
+  border: 0; border-radius: var(--radius-sm); background: transparent;
+  color: var(--text-dim); font-size: var(--text-xs); cursor: pointer;
+}
+.reports-ai-tab-action:hover { color: var(--text); background: var(--glass); }
+
+.reports-ai-error { display: grid; gap: var(--space-3); justify-items: start; }
+
+@media (max-width: 640px) {
+  .reports-chart-head { align-items: flex-start; }
+  .reports-ai-tabs { flex-wrap: wrap; }
+  .reports-ai-tab-actions { margin-left: 0; width: 100%; justify-content: flex-end; }
+}

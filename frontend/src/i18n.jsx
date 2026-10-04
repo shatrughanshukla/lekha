@@ -19,10 +19,6 @@ const DICTIONARY = {
 
     // -- auth screen --
     tagline: 'A ledger for money that moves — built to be read, not just trusted.',
-    principle_1: "Manage every company you run, and the bank and cash accounts under each, in one place.",
-    principle_2: "Transfers between companies wait for the other side's approval, and reversals need their agreement too.",
-    principle_3: "Reports and insights show volume, status and type breakdowns, calculated from your own records.",
-    principle_4: "Ask the assistant about your accounts and pending transfers. It only suggests; you confirm every action.",
     sign_in: 'Sign in',
     sign_up: 'Sign up',
     name_label: 'Name',
@@ -353,6 +349,25 @@ const DICTIONARY = {
     deleted_tag: "Deleted",
     deleted_account_note: "This account was deleted. The transfer is kept so the history stays complete.",
 
+    // -- sign-in page facts --
+    fact_label: "Did you know?",
+    fact_show: "Show fact {n}",
+    fact_1: "Lekha (लेखा) is Hindi for an account, or a written record. A ledger is exactly what the name promises.",
+    fact_2: "Double-entry bookkeeping, where every amount is recorded on two sides, was first described in print by Luca Pacioli in 1494.",
+    fact_3: "The word “bank” comes from the Italian “banco”, the bench that early Italian money-changers worked from.",
+    fact_4: "Indian digit grouping counts in lakh and crore: ₹1,00,00,000 is one crore. Lekha shows every amount that way.",
+    fact_5: "The ₹ symbol was officially adopted in 2010. It was designed by D. Udaya Kumar.",
+    fact_6: "In Lekha, money between two companies moves only after the receiving company approves the transfer.",
+
+    // -- reports: explain a chart --
+    explain_chart: "Explain",
+    explain_chart_aria: "Explain this chart: {name}",
+    explain_tab_summary: "Summary",
+    explain_card_title: "About this chart: {chart}",
+    explain_close: "Close explanation",
+    explain_back_to_chart: "Back to chart",
+    explain_retry: "Try again",
+
     // -- phase 8: landing page --
     landing_skip: "Skip to content",
     landing_nav_label: "Main navigation",
@@ -370,7 +385,7 @@ const DICTIONARY = {
     landing_hero_sub: "Lekha brings your companies, accounts, transfers, reports and financial insights into one place, so you can see where money is and where it moved.",
     landing_hero_note: "Available in English and Hindi · Light and dark themes",
     landing_pv_alt: "Illustration of the Lekha dashboard showing company totals, recent transfers, an insight summary and a transfer volume chart, using sample data.",
-    landing_pv_caption: "Illustrative preview with sample data. Not real accounts or balances.",
+    landing_pv_caption: "Illustrative preview with sample data",
     landing_pv_recent: "Recent transfers",
     landing_pv_insight: "Harbor Trading has two transfers awaiting a response, and most of this period's value moved between its bank accounts.",
     landing_features_eyebrow: "Features",
@@ -448,10 +463,6 @@ const DICTIONARY = {
     sign_out: 'साइन आउट',
 
     tagline: 'पैसों की हर हलचल का हिसाब — भरोसे पर नहीं, पढ़ने पर आधारित।',
-    principle_1: "अपनी हर कंपनी और उसके बैंक व कैश खाते एक ही जगह संभालें।",
-    principle_2: "कंपनियों के बीच ट्रांसफर दूसरे पक्ष की स्वीकृति तक लंबित रहते हैं, और उलटने के लिए भी उनकी सहमति चाहिए।",
-    principle_3: "रिपोर्ट और इनसाइट्स आपके अपने रिकॉर्ड से गणना की गई मात्रा, स्थिति और प्रकार का विवरण दिखाते हैं।",
-    principle_4: "सहायक से अपने खातों और लंबित ट्रांसफर के बारे में पूछें। वह केवल सुझाव देता है; हर कार्रवाई की पुष्टि आप करते हैं।",
     sign_in: 'साइन इन',
     sign_up: 'साइन अप',
     name_label: 'नाम',
@@ -777,6 +788,25 @@ const DICTIONARY = {
     deleted_tag: "हटाया गया",
     deleted_account_note: "यह खाता हटा दिया गया था। इतिहास पूरा रहे, इसलिए ट्रांसफर रखा गया है।",
 
+    // -- sign-in page facts --
+    fact_label: "क्या आप जानते हैं?",
+    fact_show: "तथ्य {n} दिखाएं",
+    fact_1: "लेखा का अर्थ है हिसाब, या लिखित रिकॉर्ड। बही-खाता ठीक वही है जो इस नाम का वादा है।",
+    fact_2: "दोहरी प्रविष्टि बहीखाता प्रणाली, जिसमें हर राशि दो पक्षों में दर्ज होती है, को पहली बार 1494 में लुका पैसिओली ने छपी किताब में समझाया था।",
+    fact_3: "“बैंक” शब्द इतालवी शब्द “banco” से आया है, यानी वह बेंच जिस पर शुरुआती इतालवी मुद्रा-परिवर्तक बैठकर काम करते थे।",
+    fact_4: "भारत में अंकों को लाख और करोड़ में गिना जाता है: ₹1,00,00,000 यानी एक करोड़। Lekha हर राशि इसी तरह दिखाता है।",
+    fact_5: "₹ चिह्न को 2010 में आधिकारिक रूप से अपनाया गया था। इसे डी. उदय कुमार ने डिज़ाइन किया।",
+    fact_6: "Lekha में दो कंपनियों के बीच पैसा तभी जाता है जब प्राप्तकर्ता कंपनी ट्रांसफर को स्वीकृत करे।",
+
+    // -- reports: explain a chart --
+    explain_chart: "समझाएं",
+    explain_chart_aria: "इस चार्ट को समझाएं: {name}",
+    explain_tab_summary: "सारांश",
+    explain_card_title: "इस चार्ट के बारे में: {chart}",
+    explain_close: "व्याख्या बंद करें",
+    explain_back_to_chart: "चार्ट पर वापस जाएं",
+    explain_retry: "फिर कोशिश करें",
+
     // -- phase 8: landing page --
     landing_skip: "मुख्य सामग्री पर जाएं",
     landing_nav_label: "मुख्य नेविगेशन",
@@ -794,7 +824,7 @@ const DICTIONARY = {
     landing_hero_sub: "Lekha आपकी कंपनियों, खातों, ट्रांसफर, रिपोर्ट और वित्तीय इनसाइट्स को एक जगह लाता है, ताकि आप देख सकें कि पैसा कहाँ है और कहाँ गया।",
     landing_hero_note: "अंग्रेज़ी और हिंदी में उपलब्ध · लाइट और डार्क थीम",
     landing_pv_alt: "Lekha डैशबोर्ड का उदाहरण, जिसमें कंपनी के कुल आंकड़े, हाल के ट्रांसफर, इनसाइट सारांश और ट्रांसफर वॉल्यूम चार्ट नमूना डेटा के साथ दिखाए गए हैं।",
-    landing_pv_caption: "नमूना डेटा के साथ उदाहरण पूर्वावलोकन। वास्तविक खाते या बैलेंस नहीं।",
+    landing_pv_caption: "नमूना डेटा के साथ उदाहरण पूर्वावलोकन",
     landing_pv_recent: "हाल के ट्रांसफर",
     landing_pv_insight: "Harbor Trading के दो ट्रांसफर जवाब की प्रतीक्षा में हैं, और इस अवधि का अधिकांश मूल्य उसके बैंक खातों के बीच गया।",
     landing_features_eyebrow: "सुविधाएं",

@@ -146,6 +146,14 @@ export const api = {
     const qs = params.toString()
     return request(`/reports${qs ? `?${qs}` : ''}`, { token })
   },
+  // Explains one Reports chart (volume | status | companies | flow | type | accounts)
+  // from the same scope/date window the page is showing.
+  explainReportChart: (token, { chart, companyId, since } = {}) => {
+    const params = new URLSearchParams({ chart })
+    if (companyId) params.set('company_id', companyId)
+    if (since) params.set('since', since)
+    return request(`/reports/explain?${params.toString()}`, { token })
+  },
   chat: (token, message, history) => request('/chat', { method: 'POST', token, body: { message, history } }),
   listConversations: (token) => request('/conversations', { token }),
   getConversation: (token, id) => request(`/conversations/${id}`, { token }),
