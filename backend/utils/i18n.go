@@ -110,6 +110,7 @@ var messages = map[string]map[Lang]string{
 	"summary_prep_failed":         {LangEN: "failed to prepare summary for insight generation", LangHI: "इनसाइट जनरेट करने के लिए सारांश तैयार करने में विफल"},
 	"search_bad_format":           {LangEN: "search assistant returned an unexpected format", LangHI: "खोज सहायक ने एक अप्रत्याशित प्रारूप लौटाया"},
 	"search_assistant_unavailable": {LangEN: "search assistant unavailable: ", LangHI: "खोज सहायक अनुपलब्ध है: "},
+	"assistant_unavailable":       {LangEN: "I couldn't answer just now \u2014 please try again in a moment.", LangHI: "मैं अभी उत्तर नहीं दे पाया \u2014 कृपया थोड़ी देर में फिर कोशिश करें।"},
 	"ai_summary_unavailable":      {LangEN: "AI summary unavailable right now: ", LangHI: "एआई सारांश अभी अनुपलब्ध है: "},
 
 	// -- generic DB error classification (utils/dberrors.go) --

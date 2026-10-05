@@ -184,10 +184,51 @@
 
 /* ----------------------------------------------------------- assistant */
 
-/* 100vh on a phone includes the area behind the browser's address bar, which
-   pushed the input row off-screen; dvh tracks what is actually visible. */
+/* The assistant is a chat: the page itself must NEVER scroll. Only the message
+   list scrolls; the header stays at the top and the composer stays at the
+   bottom of the visible screen.
+
+   The old rule sized the page as `100dvh - 58px`, but the real top bar is a
+   few px taller than that on phones, so the document ended up slightly taller
+   than the screen and the whole page (composer included) slid up and down
+   when touched. Instead of guessing the header height, make the whole chain
+   shell -> main column -> page a flex column pinned to the visible viewport
+   (dvh = what is actually visible, even as the browser's address bar moves),
+   and let the page take whatever is left.
+
+   :has() scopes all of this to the assistant route only. */
+html:has(.assistant-page),
+body:has(.assistant-page) { overflow: hidden; overscroll-behavior: none; }
+
+.app-shell:has(.assistant-page) { height: 100dvh; min-height: 0; overflow: hidden; }
+.app-shell:has(.assistant-page) .main-column { flex: 1; height: 100%; min-height: 0; }
+.app-shell:has(.assistant-page) .top-bar { flex-shrink: 0; position: static; }
+.app-shell:has(.assistant-page) .page-viewport { flex: 1; min-height: 0; display: flex; flex-direction: column; overflow: hidden; }
+.app-shell:has(.assistant-page) .page-viewport > div { flex: 1; min-height: 0; display: flex; flex-direction: column; }
+
+/* index.css has `.page-layout { padding: ... 70px }` inside a (max-width: 900px)
+   block, and it comes AFTER `.page-layout-flush { padding: 0 }`, so on phones it
+   quietly won and put 32px above and 70px below the chat (the empty strip under
+   the composer). Two classes beat one. */
+.page-layout.page-layout-flush { padding: 0; }
+.assistant-page.page-layout-flush { flex: 1; height: auto; min-height: 0; display: flex; flex-direction: column; }
+.assistant-page .page-layout-body { flex: 1; height: auto; min-height: 0; display: flex; flex-direction: column; }
+.assistant-workspace { flex: 1; height: auto; min-height: 0; }
+
+/* Scrolling stays inside the message list: no scroll chaining to the page,
+   no pull-to-refresh, momentum scrolling on iOS. */
+.assistant-messages { overscroll-behavior: contain; -webkit-overflow-scrolling: touch; }
+.assistant-history-list { overscroll-behavior: contain; }
+
 @media (max-width: 640px) {
-  .assistant-page.page-layout-flush { height: calc(100dvh - 58px); }
+  /* iOS Safari zooms the page when a field under 16px is focused, which also
+     shifts the layout. 16px stops the zoom. */
+  .chat-input { font-size: 16px; }
+  /* Composer sits flush to the bottom with a small gap. */
+  .chat-input-row { margin-bottom: var(--space-3); }
+  .assistant-conversation-head { padding: var(--space-2) var(--space-4); }
+  /* Long answers: comfortable reading width and size on a phone. */
+  .msg-assistant { font-size: 0.95rem; line-height: 1.6; }
 }
 
 /* ------------------------------------------------------- sign-in / sign-up */

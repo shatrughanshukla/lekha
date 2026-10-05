@@ -16,35 +16,38 @@ import {
 
 /**
  * Minimal, dependency-free rendering for the assistant's reply text:
- * blank-line-separated paragraphs, and consecutive "- "/"* " lines as a
- * bullet list. Not full markdown — the model's system prompt (see
- * backend/handlers/chat_handler.go) only asks for a plain-text "reply"
- * string today, so real table/code-block support would have nothing to
- * render; this covers what the assistant actually produces without
- * pulling in a markdown dependency for it.
+ * blank-line-separated paragraphs, consecutive "- "/"* " lines as a bullet
+ * list, consecutive "1. "/"2) " lines as a numbered list, and **bold** inline.
+ * Not full markdown (the system prompt in backend/handlers/chat_handler.go
+ * asks for exactly this subset). Everything is rendered as React text nodes,
+ * never as HTML, so nothing the model writes can inject markup.
  */
+function renderInline(text) {
+  return text.split(/\*\*(.+?)\*\*/g).map((part, i) => (i % 2 === 1 ? <strong key={i}>{part}</strong> : part))
+}
+
 function AssistantText({ content }) {
   const blocks = useMemo(() => {
     const paras = content.split(/\n{2,}/)
     return paras.map((para) => {
       const lines = para.split('\n').filter((l) => l.trim() !== '')
-      const isList = lines.length > 0 && lines.every((l) => /^[-*]\s+/.test(l.trim()))
-      if (isList) return { type: 'list', items: lines.map((l) => l.trim().replace(/^[-*]\s+/, '')) }
+      if (lines.length > 0 && lines.every((l) => /^[-*]\s+/.test(l.trim()))) {
+        return { type: 'ul', items: lines.map((l) => l.trim().replace(/^[-*]\s+/, '')) }
+      }
+      if (lines.length > 0 && lines.every((l) => /^\d+[.)]\s+/.test(l.trim()))) {
+        return { type: 'ol', items: lines.map((l) => l.trim().replace(/^\d+[.)]\s+/, '')) }
+      }
       return { type: 'p', text: para }
     })
   }, [content])
 
   return (
     <>
-      {blocks.map((b, i) =>
-        b.type === 'list' ? (
-          <ul key={i} className="msg-list">
-            {b.items.map((item, j) => <li key={j}>{item}</li>)}
-          </ul>
-        ) : (
-          <p key={i}>{b.text}</p>
-        )
-      )}
+      {blocks.map((b, i) => {
+        if (b.type === 'ul') return <ul key={i} className="msg-list">{b.items.map((item, j) => <li key={j}>{renderInline(item)}</li>)}</ul>
+        if (b.type === 'ol') return <ol key={i} className="msg-list">{b.items.map((item, j) => <li key={j}>{renderInline(item)}</li>)}</ol>
+        return <p key={i}>{renderInline(b.text)}</p>
+      })}
     </>
   )
 }
@@ -92,7 +95,7 @@ export default function ChatPage({ token, user }) {
   const listVars = useMotionVariants(listVariants)
   const itemVars = useMotionVariants(listItemVariants)
 
-  const suggestedPrompts = [t('chat_suggestion_1'), t('chat_suggestion_2'), t('chat_suggestion_3'), t('chat_suggestion_4')]
+  const suggestedPrompts = [t('chat_suggestion_1'), t('chat_suggestion_2'), t('chat_suggestion_3'), t('chat_suggestion_4'), t('chat_suggestion_5')]
 
   useEffect(() => {
     api.listConversations(token)
