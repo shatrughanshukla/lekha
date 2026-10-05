@@ -65,6 +65,18 @@
 
 /* ---------------------------------------------------------- dashboard */
 
+/* The dashboard is a "flush" page that sets its own padding (32px 24px 90px) so
+   on tablets and phones it was both roomier and different from every other
+   page. Below 900px give it exactly what `.page-layout` gives Transfers,
+   Transactions, Reports and Accounts, so all pages line up. */
+@media (max-width: 900px) {
+  .dashboard-v2.page-layout-flush { padding: var(--space-8) var(--space-5) 70px; }
+}
+@media (max-width: 640px) {
+  .dashboard-v2.page-layout-flush { padding: var(--space-6) var(--space-4) 64px; }
+}
+
+
 /* Grid items default to min-width:auto, so a wide child (a long amount, a
    badge) forces the track — and the page — wider than the screen. */
 .dash-summary-row > *,
@@ -209,9 +221,12 @@ body:has(.assistant-page) { overflow: hidden; overscroll-behavior: none; }
 /* index.css has `.page-layout { padding: ... 70px }` inside a (max-width: 900px)
    block, and it comes AFTER `.page-layout-flush { padding: 0 }`, so on phones it
    quietly won and put 32px above and 70px below the chat (the empty strip under
-   the composer). Two classes beat one. */
-.page-layout.page-layout-flush { padding: 0; }
-.assistant-page.page-layout-flush { flex: 1; height: auto; min-height: 0; display: flex; flex-direction: column; }
+   the composer). Two classes beat one.
+
+   Scoped to the assistant ON PURPOSE: the dashboard is also a "flush" page, but
+   it sets its own padding (see the dashboard rule below), and a rule on every
+   flush page would wipe that out. */
+.assistant-page.page-layout-flush { padding: 0; flex: 1; height: auto; min-height: 0; display: flex; flex-direction: column; }
 .assistant-page .page-layout-body { flex: 1; height: auto; min-height: 0; display: flex; flex-direction: column; }
 .assistant-workspace { flex: 1; height: auto; min-height: 0; }
 
