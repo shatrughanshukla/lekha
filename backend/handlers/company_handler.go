@@ -51,6 +51,7 @@ func CreateCompany(c *gin.Context) {
 		c.JSON(http.StatusBadRequest, gin.H{"error": utils.Msg(c, "invalid_request_data")})
 		return
 	}
+	userID := c.GetString("user_id")
 
 	tx, err := config.DB.Begin()
 	if err != nil {
@@ -64,7 +65,7 @@ func CreateCompany(c *gin.Context) {
 		INSERT INTO company (company_name, created_by, updated_by)
 		VALUES ($1, $2, $2)
 		RETURNING id, company_name, created_at, updated_at, created_by, updated_by`,
-		input.CompanyName, input.CreatedBy,
+		input.CompanyName, userID,
 	).Scan(&comp.ID, &comp.CompanyName, &comp.CreatedAt, &comp.UpdatedAt, &comp.CreatedBy, &comp.UpdatedBy)
 	if err != nil {
 		utils.RespondDBError(c, err)
@@ -73,7 +74,7 @@ func CreateCompany(c *gin.Context) {
 
 	if _, err = tx.Exec(
 		`INSERT INTO company_members (company_id, user_id, is_admin) VALUES ($1, $2, TRUE)`,
-		comp.ID, input.CreatedBy,
+		comp.ID, userID,
 	); err != nil {
 		utils.RespondDBError(c, err)
 		return

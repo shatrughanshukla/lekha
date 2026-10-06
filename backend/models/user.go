@@ -20,6 +20,5 @@ type User struct {
 type UpdateUserInput struct {
 	Name              *string `json:"name"`
 	Email             *string `json:"email"`
-	ProfilePictureURL *string `json:"profile_picture_url"`
 	PreferredLanguage *string `json:"preferred_language" binding:"omitempty,oneof=en hi"`
 }

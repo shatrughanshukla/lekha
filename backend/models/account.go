@@ -33,7 +33,6 @@ type CreateAccountInput struct {
 	CompanyID      string  `json:"company_id" binding:"required,uuid"`
 	AccountType    string  `json:"account_type" binding:"required,oneof=BANK CASH"`
 	CurrentBalance float64 `json:"current_balance" binding:"gte=0"`
-	CreatedBy      string  `json:"created_by" binding:"required,uuid"`
 }
 
 // UpdateAccountInput is the payload accepted by PUT /accounts/:id.
@@ -42,5 +41,4 @@ type CreateAccountInput struct {
 type UpdateAccountInput struct {
 	AccountType *string `json:"account_type" binding:"omitempty,oneof=BANK CASH"`
 	IsActive    *bool   `json:"is_active"`
-	UpdatedBy   string  `json:"updated_by" binding:"required,uuid"`
 }

@@ -86,12 +86,14 @@ func callGemini(systemPrompt, userMessage string, jsonMode bool) (string, error)
 		return "", fmt.Errorf("failed to build request: %w", err)
 	}
 
-	url := fmt.Sprintf("%s?key=%s", geminiAPIURL, apiKey)
-	req, err := http.NewRequest("POST", url, bytes.NewReader(bodyBytes))
+	req, err := http.NewRequest("POST", geminiAPIURL, bytes.NewReader(bodyBytes))
 	if err != nil {
 		return "", fmt.Errorf("failed to create request: %w", err)
 	}
 	req.Header.Set("Content-Type", "application/json")
+	// Keep credentials out of request URLs, which are commonly captured in
+	// access logs and tracing metadata.
+	req.Header.Set("x-goog-api-key", apiKey)
 
 	client := &http.Client{Timeout: 20 * time.Second}
 	resp, err := client.Do(req)

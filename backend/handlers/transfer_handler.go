@@ -185,7 +185,7 @@ func CreateTransfer(c *gin.Context) {
 
 	err = tx.QueryRow(insertQuery,
 		fromCompanyID, transferType, input.FromAccountID, input.ToAccountID,
-		input.Amount, status, input.TransferNotes, input.CreatedByUser,
+		input.Amount, status, input.TransferNotes, userID,
 	).Scan(&transfer.ID, &transfer.CompanyID, &transfer.TransferType, &transfer.TransactionDate,
 		&transfer.FromAccountID, &transfer.ToAccountID, &transfer.Amount, &transfer.Status,
 		&transfer.TransferNotes, &transfer.CreatedByUser, &transfer.UpdatedByUser,
@@ -485,7 +485,7 @@ func ProposeTransferStatus(c *gin.Context) {
 			RETURNING id, company_id, transfer_type, transaction_date, from_account_id, to_account_id,
 			          amount, status, transfer_notes, created_by_user, updated_by_user, created_at, updated_at,
 			          pending_status, proposed_by_company_id, proposed_by_user_id`,
-			input.UpdatedByUser, id)
+			userID, id)
 		t, err = scanBareTransferRow(row)
 	} else {
 		proposerCompanyID := fromCompanyID
@@ -499,7 +499,7 @@ func ProposeTransferStatus(c *gin.Context) {
 			RETURNING id, company_id, transfer_type, transaction_date, from_account_id, to_account_id,
 			          amount, status, transfer_notes, created_by_user, updated_by_user, created_at, updated_at,
 			          pending_status, proposed_by_company_id, proposed_by_user_id`,
-			input.Status, proposerCompanyID, input.UpdatedByUser, id)
+			input.Status, proposerCompanyID, userID, id)
 		t, err = scanBareTransferRow(row)
 	}
 	if err != nil {
@@ -782,7 +782,7 @@ func RespondToTransfer(c *gin.Context) {
 		RETURNING id, company_id, transfer_type, transaction_date, from_account_id, to_account_id,
 		          amount, status, transfer_notes, created_by_user, updated_by_user, created_at, updated_at,
 		          pending_status, proposed_by_company_id, proposed_by_user_id`,
-		newStatus, input.UpdatedByUser, id)
+		newStatus, userID, id)
 	t, err := scanBareTransferRow(row)
 	if err != nil {
 		utils.RespondDBError(c, err)

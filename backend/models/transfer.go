@@ -41,8 +41,8 @@ type Transfer struct {
 	FromAccountDeleted bool `json:"from_account_deleted"`
 	ToAccountDeleted   bool `json:"to_account_deleted"`
 
-	CreatedByName   string `json:"created_by_name,omitempty"`
-	UpdatedByName   string `json:"updated_by_name,omitempty"`
+	CreatedByName string `json:"created_by_name,omitempty"`
+	UpdatedByName string `json:"updated_by_name,omitempty"`
 }
 
 // CreateTransferInput is the payload accepted by POST /transfers.
@@ -57,15 +57,13 @@ type CreateTransferInput struct {
 	ToAccountID   string  `json:"to_account_id" binding:"required,uuid,nefield=FromAccountID"`
 	Amount        float64 `json:"amount" binding:"required,gt=0"`
 	TransferNotes *string `json:"transfer_notes"`
-	CreatedByUser string  `json:"created_by_user" binding:"required,uuid"`
 }
 
 // ProposeStatusInput is the payload accepted by PATCH /transfers/:id/propose.
 // Only usable on an already-COMPLETED transfer with no proposal already in
 // flight — it starts a proposal, it never applies anything by itself.
 type ProposeStatusInput struct {
-	Status        string `json:"status" binding:"required,oneof=REVERSED"`
-	UpdatedByUser string `json:"updated_by_user" binding:"required,uuid"`
+	Status string `json:"status" binding:"required,oneof=REVERSED"`
 }
 
 // ApprovalInput is the payload accepted by PATCH /transfers/:id/approval —
@@ -73,6 +71,5 @@ type ProposeStatusInput struct {
 // It answers whatever is currently awaiting a decision on this transfer:
 // a brand-new PENDING transfer, or a pending REVERSED proposal.
 type ApprovalInput struct {
-	Approve       bool   `json:"approve"`
-	UpdatedByUser string `json:"updated_by_user" binding:"required,uuid"`
+	Approve bool `json:"approve"`
 }

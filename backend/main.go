@@ -51,6 +51,11 @@ func main() {
 	config.ConnectDB()
 
 	router := gin.Default()
+	// Do not trust X-Forwarded-For from arbitrary clients. Deployments behind
+	// a proxy can configure Gin's trusted proxy CIDRs explicitly.
+	if err := router.SetTrustedProxies(nil); err != nil {
+		log.Fatalf("failed to disable untrusted proxy headers: %v", err)
+	}
 
 	// CORS: restricted to actual known origins rather than "*". Configure
 	// via ALLOWED_ORIGINS (comma-separated) in production — e.g.

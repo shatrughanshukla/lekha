@@ -3,6 +3,7 @@ package handlers
 import (
 	"database/sql"
 	"fmt"
+	stdhtml "html"
 	"net/http"
 	"os"
 	"time"
@@ -232,7 +233,7 @@ func ForgotPassword(c *gin.Context) {
 	}
 
 	link := fmt.Sprintf("%s/?reset_token=%s", frontendURL(), raw)
-	html := fmt.Sprintf(`<p>Hi %s,</p><p>Someone requested a password reset for your Lekha account. If this was you, click below — this link expires in 1 hour:</p><p><a href="%s">Reset your password</a></p><p>If you didn't request this, you can safely ignore this email.</p>`, name, link)
+	html := fmt.Sprintf(`<p>Hi %s,</p><p>Someone requested a password reset for your Lekha account. If this was you, click below — this link expires in 1 hour:</p><p><a href="%s">Reset your password</a></p><p>If you didn't request this, you can safely ignore this email.</p>`, stdhtml.EscapeString(name), stdhtml.EscapeString(link))
 	go func() {
 		if err := utils.SendEmail(input.Email, "Reset your Lekha password", html); err != nil {
 			// Logged server-side only — the HTTP response above already
@@ -401,6 +402,6 @@ func sendVerificationEmail(userID, email, name string) error {
 	}
 
 	link := fmt.Sprintf("%s/?verify_token=%s", frontendURL(), raw)
-	html := fmt.Sprintf(`<p>Hi %s,</p><p>Welcome to Lekha — click below to verify your email address. This link expires in 24 hours:</p><p><a href="%s">Verify your email</a></p>`, name, link)
+	html := fmt.Sprintf(`<p>Hi %s,</p><p>Welcome to Lekha — click below to verify your email address. This link expires in 24 hours:</p><p><a href="%s">Verify your email</a></p>`, stdhtml.EscapeString(name), stdhtml.EscapeString(link))
 	return utils.SendEmail(email, "Verify your Lekha email", html)
 }

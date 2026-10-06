@@ -6,6 +6,7 @@ import (
 	"io"
 	"net/http"
 	"os"
+	"time"
 )
 
 // UploadToSupabaseStorage uploads a file's bytes to a Supabase Storage
@@ -42,7 +43,7 @@ func UploadToSupabaseStorage(objectPath string, contentType string, data []byte)
 	// user replaces their photo using a path derived from their user id).
 	req.Header.Set("x-upsert", "true")
 
-	client := &http.Client{}
+	client := &http.Client{Timeout: 30 * time.Second}
 	resp, err := client.Do(req)
 	if err != nil {
 		return "", fmt.Errorf("uploading to storage: %w", err)
@@ -50,8 +51,8 @@ func UploadToSupabaseStorage(objectPath string, contentType string, data []byte)
 	defer resp.Body.Close()
 
 	if resp.StatusCode < 200 || resp.StatusCode >= 300 {
-		body, _ := io.ReadAll(resp.Body)
-		return "", fmt.Errorf("storage upload failed (%d): %s", resp.StatusCode, string(body))
+		_, _ = io.Copy(io.Discard, io.LimitReader(resp.Body, 4096))
+		return "", fmt.Errorf("storage upload failed (%d)", resp.StatusCode)
 	}
 
 	publicURL := fmt.Sprintf("%s/storage/v1/object/public/%s/%s", supabaseURL, bucket, objectPath)

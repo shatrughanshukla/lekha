@@ -20,7 +20,6 @@ type Company struct {
 // CreateCompanyInput is the payload accepted by POST /companies.
 type CreateCompanyInput struct {
 	CompanyName string `json:"company_name" binding:"required"`
-	CreatedBy   string `json:"created_by" binding:"required,uuid"`
 }
 
 // UpdateCompanyInput is the payload accepted by PUT /companies/:id.

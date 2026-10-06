@@ -7,6 +7,7 @@ import (
 	"io"
 	"net/http"
 	"os"
+	"time"
 )
 
 type resendEmailPayload struct {
@@ -48,15 +49,18 @@ func SendEmail(to, subject, html string) error {
 	req.Header.Set("Authorization", "Bearer "+apiKey)
 	req.Header.Set("Content-Type", "application/json")
 
-	resp, err := http.DefaultClient.Do(req)
+	client := &http.Client{Timeout: 15 * time.Second}
+	resp, err := client.Do(req)
 	if err != nil {
 		return err
 	}
 	defer resp.Body.Close()
 
 	if resp.StatusCode >= 300 {
-		respBody, _ := io.ReadAll(resp.Body)
-		return fmt.Errorf("resend API error (%d): %s", resp.StatusCode, string(respBody))
+		// Upstream response bodies may contain provider diagnostics or
+		// recipient data. Keep the error safe for application logs.
+		_, _ = io.Copy(io.Discard, io.LimitReader(resp.Body, 4096))
+		return fmt.Errorf("resend API error (%d)", resp.StatusCode)
 	}
 	return nil
 }

@@ -60,7 +60,7 @@ func CreateAccount(c *gin.Context) {
 		INSERT INTO accounts (company_id, account_type, current_balance, created_by, updated_by)
 		VALUES ($1, $2, $3, $4, $4)
 		RETURNING id, company_id, account_type, current_balance, is_active, created_at, updated_at, created_by, updated_by`,
-		input.CompanyID, input.AccountType, input.CurrentBalance, input.CreatedBy,
+		input.CompanyID, input.AccountType, input.CurrentBalance, userID,
 	).Scan(&acc.ID, &acc.CompanyID, &acc.AccountType, &acc.CurrentBalance, &acc.IsActive,
 		&acc.CreatedAt, &acc.UpdatedAt, &acc.CreatedBy, &acc.UpdatedBy)
 	if err != nil {
@@ -268,7 +268,7 @@ func UpdateAccount(c *gin.Context) {
 		    updated_by = $3
 		WHERE id = $4 AND deleted_at IS NULL
 		RETURNING id, company_id, account_type, current_balance, is_active, created_at, updated_at, created_by, updated_by`,
-		input.AccountType, input.IsActive, input.UpdatedBy, id,
+		input.AccountType, input.IsActive, userID, id,
 	).Scan(&acc.ID, &acc.CompanyID, &acc.AccountType, &acc.CurrentBalance, &acc.IsActive,
 		&acc.CreatedAt, &acc.UpdatedAt, &acc.CreatedBy, &acc.UpdatedBy)
 

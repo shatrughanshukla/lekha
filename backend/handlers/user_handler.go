@@ -1,12 +1,15 @@
 package handlers
 
 import (
+	"bytes"
 	"database/sql"
 	"fmt"
+	"image"
+	_ "image/gif"
+	_ "image/jpeg"
+	"image/png"
 	"io"
 	"net/http"
-	"path/filepath"
-	"strings"
 	"time"
 
 	"github.com/gin-gonic/gin"
@@ -29,26 +32,16 @@ import (
 
 // GetUsers handles GET /users
 func GetUsers(c *gin.Context) {
-	rows, err := config.DB.Query(`SELECT ` + userColumns + ` FROM users ORDER BY created_at DESC`)
-	if err != nil {
+	// This endpoint is retained for compatibility, but must never disclose
+	// the directory of every registered user to any authenticated account.
+	var u models.User
+	var picture sql.NullString
+	if err := scanUserRow(config.DB.QueryRow(`SELECT `+userColumns+` FROM users WHERE id = $1`, c.GetString("user_id")), &u, &picture); err != nil {
 		utils.RespondDBError(c, err)
 		return
 	}
-	defer rows.Close()
-
-	users := []models.User{}
-	for rows.Next() {
-		var u models.User
-		var picture sql.NullString
-		if err := scanUserRow(rows, &u, &picture); err != nil {
-			utils.RespondDBError(c, err)
-			return
-		}
-		u.ProfilePictureURL = utils.NullStringToPtr(picture)
-		users = append(users, u)
-	}
-
-	c.JSON(http.StatusOK, users)
+	u.ProfilePictureURL = utils.NullStringToPtr(picture)
+	c.JSON(http.StatusOK, []models.User{u})
 }
 
 // GetUserByID handles GET /users/:id
@@ -56,6 +49,10 @@ func GetUserByID(c *gin.Context) {
 	id := c.Param("id")
 	if !utils.IsValidUUID(id) {
 		c.JSON(http.StatusBadRequest, gin.H{"error": utils.Msg(c, "invalid_id")})
+		return
+	}
+	if id != c.GetString("user_id") {
+		c.JSON(http.StatusNotFound, gin.H{"error": utils.Msg(c, "user_not_found")})
 		return
 	}
 
@@ -93,6 +90,10 @@ func UpdateUser(c *gin.Context) {
 		c.JSON(http.StatusBadRequest, gin.H{"error": utils.Msg(c, "invalid_id")})
 		return
 	}
+	if id != c.GetString("user_id") {
+		c.JSON(http.StatusNotFound, gin.H{"error": utils.Msg(c, "user_not_found")})
+		return
+	}
 
 	var input models.UpdateUserInput
 	if err := c.ShouldBindJSON(&input); err != nil {
@@ -100,18 +101,20 @@ func UpdateUser(c *gin.Context) {
 		return
 	}
 
+	// A changed email must become unverified. Profile-picture URLs can only
+	// be changed through the validated upload/remove endpoints.
 	query := `
 		UPDATE users
 		SET name = COALESCE($1, name),
+		    email_verified = CASE WHEN $2::text IS NOT NULL AND lower(email) <> lower($2) THEN false ELSE email_verified END,
 		    email = COALESCE($2, email),
-		    profile_picture_url = COALESCE($3, profile_picture_url),
-		    preferred_language = COALESCE($4, preferred_language)
-		WHERE id = $5
+		    preferred_language = COALESCE($3, preferred_language)
+		WHERE id = $4
 		RETURNING ` + userColumns
 
 	var u models.User
 	var picture sql.NullString
-	row := config.DB.QueryRow(query, input.Name, input.Email, input.ProfilePictureURL, input.PreferredLanguage, id)
+	row := config.DB.QueryRow(query, input.Name, input.Email, input.PreferredLanguage, id)
 	err := scanUserRow(row, &u, &picture)
 
 	if err == sql.ErrNoRows {
@@ -123,6 +126,16 @@ func UpdateUser(c *gin.Context) {
 		return
 	}
 	u.ProfilePictureURL = utils.NullStringToPtr(picture)
+	if input.Email != nil && !u.EmailVerified {
+		// Email changes are allowed, but the new address is not trusted until
+		// the owner completes the normal verification flow.
+		go func() {
+			if err := sendVerificationEmail(u.ID, u.Email, u.Name); err != nil {
+				// Do not expose provider details to the API caller.
+				fmt.Printf("failed to send verification email for user %s: %v\n", u.ID, err)
+			}
+		}()
+	}
 
 	c.JSON(http.StatusOK, u)
 }
@@ -132,6 +145,10 @@ func DeleteUser(c *gin.Context) {
 	id := c.Param("id")
 	if !utils.IsValidUUID(id) {
 		c.JSON(http.StatusBadRequest, gin.H{"error": utils.Msg(c, "invalid_id")})
+		return
+	}
+	if id != c.GetString("user_id") {
+		c.JSON(http.StatusNotFound, gin.H{"error": utils.Msg(c, "user_not_found")})
 		return
 	}
 
@@ -203,15 +220,6 @@ func ChangePassword(c *gin.Context) {
 	c.JSON(http.StatusOK, gin.H{"message": utils.Msg(c, "password_changed")})
 }
 
-// allowedProfilePictureTypes are the image formats we'll accept and their
-// canonical file extension for the stored object path.
-var allowedProfilePictureTypes = map[string]string{
-	"image/jpeg": ".jpg",
-	"image/png":  ".png",
-	"image/webp": ".webp",
-	"image/gif":  ".gif",
-}
-
 const maxProfilePictureBytes = 5 * 1024 * 1024 // 5MB
 
 // UploadProfilePicture handles POST /users/:id/profile-picture
@@ -230,21 +238,16 @@ func UploadProfilePicture(c *gin.Context) {
 		return
 	}
 
+	// Bound the complete multipart body before the framework parses it.
+	c.Request.Body = http.MaxBytesReader(c.Writer, c.Request.Body, maxProfilePictureBytes+(64<<10))
 	fileHeader, err := c.FormFile("photo")
 	if err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": utils.Msg(c, "no_photo_provided")})
 		return
 	}
 
-	if fileHeader.Size > maxProfilePictureBytes {
+	if fileHeader.Size <= 0 || fileHeader.Size > maxProfilePictureBytes {
 		c.JSON(http.StatusBadRequest, gin.H{"error": utils.Msg(c, "photo_too_large")})
-		return
-	}
-
-	contentType := fileHeader.Header.Get("Content-Type")
-	ext, ok := allowedProfilePictureTypes[contentType]
-	if !ok {
-		c.JSON(http.StatusBadRequest, gin.H{"error": utils.Msg(c, "unsupported_image_type")})
 		return
 	}
 
@@ -255,21 +258,56 @@ func UploadProfilePicture(c *gin.Context) {
 	}
 	defer file.Close()
 
-	data, err := io.ReadAll(file)
+	data, err := io.ReadAll(io.LimitReader(file, maxProfilePictureBytes+1))
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": utils.Msg(c, "could_not_read_file")})
 		return
 	}
+	if len(data) == 0 || len(data) > maxProfilePictureBytes {
+		c.JSON(http.StatusBadRequest, gin.H{"error": utils.Msg(c, "photo_too_large")})
+		return
+	}
+	// Derive the type from the bytes, not the caller-controlled multipart
+	// header. Decode and re-encode as PNG to discard malformed/polyglot data.
+	imageCfg, format, err := image.DecodeConfig(bytes.NewReader(data))
+	if err != nil || (format != "jpeg" && format != "png" && format != "gif") {
+		c.JSON(http.StatusBadRequest, gin.H{"error": utils.Msg(c, "unsupported_image_type")})
+		return
+	}
+	if imageCfg.Width < 1 || imageCfg.Height < 1 || imageCfg.Width > 4096 || imageCfg.Height > 4096 || int64(imageCfg.Width)*int64(imageCfg.Height) > 16_000_000 {
+		c.JSON(http.StatusBadRequest, gin.H{"error": utils.Msg(c, "unsupported_image_type")})
+		return
+	}
+	decoded, _, err := image.Decode(bytes.NewReader(data))
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": utils.Msg(c, "unsupported_image_type")})
+		return
+	}
+	bounds := decoded.Bounds()
+	if bounds.Dx() != imageCfg.Width || bounds.Dy() != imageCfg.Height {
+		c.JSON(http.StatusBadRequest, gin.H{"error": utils.Msg(c, "unsupported_image_type")})
+		return
+	}
+	var sanitized bytes.Buffer
+	if err := png.Encode(&sanitized, decoded); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": utils.Msg(c, "unsupported_image_type")})
+		return
+	}
+	if sanitized.Len() > maxProfilePictureBytes {
+		c.JSON(http.StatusBadRequest, gin.H{"error": utils.Msg(c, "photo_too_large")})
+		return
+	}
+	data = sanitized.Bytes()
+	contentType := "image/png"
+	ext := ".png"
 
 	// Deterministic path per user (not per-upload) so re-uploading replaces
 	// the old picture in storage instead of accumulating orphaned files.
-	objectPath := fmt.Sprintf("%s%s", id, ext)
-	// Guard against any path traversal sneaking in via a crafted extension.
-	objectPath = strings.ReplaceAll(filepath.Clean(objectPath), "..", "")
+	objectPath := id + ext
 
 	publicURL, err := utils.UploadToSupabaseStorage(objectPath, contentType, data)
 	if err != nil {
-		c.JSON(http.StatusBadGateway, gin.H{"error": utils.Msg(c, "photo_upload_failed") + err.Error()})
+		c.JSON(http.StatusBadGateway, gin.H{"error": utils.Msg(c, "photo_upload_failed")})
 		return
 	}
 
